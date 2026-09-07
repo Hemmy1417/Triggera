@@ -12,6 +12,31 @@ import { PROXY_CHAIN } from "./chain";
  * failed read must never fall through to the value the contract returns for
  * "nothing here".
  */
+/**
+ * A read that failed, and whether it is worth trying again. lib/tx.ts's
+ * confirmation poll asks `transient`: without this class it can only match
+ * prose, and a rate-limited read then reads as a failed transaction.
+ */
+export class ReadError extends Error {
+  readonly transient: boolean;
+  constructor(message: string, transient: boolean) {
+    super(message);
+    this.name = "ReadError";
+    this.transient = transient;
+  }
+}
+
+/** Studio Next answers a rate limit with -32029 and a [transient] sentence. */
+function asReadError(err: unknown): ReadError {
+  const e = err as { code?: unknown; message?: unknown; cause?: { code?: unknown } } | undefined;
+  const text = String(e?.message ?? err ?? "read failed");
+  const code = e?.code ?? e?.cause?.code;
+  const transient =
+    code === -32029 ||
+    /\[transient\]|rate limit|too many requests|fetch failed|timeout|network/i.test(text);
+  return new ReadError(text, transient);
+}
+
 const client = createClient({ chain: PROXY_CHAIN });
 
 type Cached = { at: number; value: unknown };
@@ -26,11 +51,16 @@ async function view(fn: string, args: CalldataEncodable[], key: string, force = 
   if (!CONTRACT_CONFIGURED) throw new Error("no contract configured");
   const hit = cache.get(key);
   if (!force && hit && Date.now() - hit.at < ttl) return hit.value;
-  const raw = await client.readContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    functionName: fn,
-    args,
-  });
+  let raw: unknown;
+  try {
+    raw = await client.readContract({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      functionName: fn,
+      args,
+    });
+  } catch (err) {
+    throw asReadError(err);
+  }
   const value = typeof raw === "string" && raw !== "" ? JSON.parse(raw) : raw;
   cache.set(key, { at: Date.now(), value });
   return value;
@@ -405,7 +435,7 @@ export async function getTransactionStatus(hash: string): Promise<TxFinalityView
     // An unknown hash is an answer, not an error: the transaction has not
     // been seen yet. Callers keep polling rather than failing.
     if (isNotSeen(err)) return NOT_SEEN;
-    throw err;
+    throw asReadError(err);
   }
   if (raw === null || raw === undefined) return NOT_SEEN;
   return normalizeTxView(raw);

@@ -455,6 +455,21 @@ blockquote.reason {
 .step.on .dot { background: var(--iris); }
 .step.fail { color: var(--bone); }
 .step.fail .dot { background: var(--red); }
+/* TxFlow marks each stage with a small hexagon: outlined while it is ahead,
+   filled once it is reached. Without this rule the markers never painted. */
+.hex {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  flex: none;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  opacity: 0.45;
+}
+.step.done .hex, .step.on .hex, .step.fail .hex { opacity: 1; }
+.step.on .hex { color: var(--iris); }
+.step.fail .hex { color: var(--red); }
+
 .txdetail { font-size: 13px; color: var(--ash); }
 .txdetail a { color: var(--iris); }
 
