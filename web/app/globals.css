@@ -526,10 +526,243 @@ blockquote.reason {
 
 /* 375px */
 
-@media (max-width: 620px) {
+@media (max-width: 720px) {
   :root { --pad-x: 16px; --section-gap: 64px; }
   main.page { padding: 32px var(--pad-x) 72px; }
   .card { padding: 20px; }
-  .nav-links { gap: 16px; }
   .big-figure { font-size: 26px; }
+
+  /* The bar has three groups and no room for them on one line: the links
+     take their own row beneath the brand and the wallet, rather than being
+     drawn over the wallet control. */
+  .masthead-inner { flex-wrap: wrap; gap: 12px 16px; }
+  .brand { order: 1; }
+  .nav-tools { order: 2; margin-left: auto; }
+  .nav-links {
+    order: 3;
+    flex-basis: 100%;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+}
+
+
+/* ── the policy book: app-first, the shape Base ecosystem apps use ──────
+   No hero. A dense metric strip, tabs that switch the data view, a filter
+   and sort toolbar as a first-class control surface, then rows that carry
+   the whole record. */
+
+main.page.book { padding-top: 32px; }
+.page.book > * + * { margin-top: 20px; }
+
+.metricstrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 40px;
+  align-items: baseline;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+.metric { display: inline-flex; align-items: baseline; gap: 10px; min-width: 0; }
+.metric-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+.metric-value {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--white);
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  padding: 7px 12px;
+  font-size: 14px;
+  color: var(--ash);
+  transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+.tab:hover { color: var(--white); }
+.tab.on { color: var(--white); border-color: var(--hairline); }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.control { display: inline-flex; align-items: center; gap: 8px; }
+.control-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+.control select {
+  background: transparent;
+  color: var(--bone);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-control);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.control select:focus { outline: none; border-color: var(--smoke); }
+
+.policyrows { display: grid; gap: 12px; }
+
+.policyrow {
+  display: block;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-card);
+  padding: 24px;
+  transition: border-color 150ms ease-out;
+  min-width: 0;
+}
+.policyrow:hover { border-color: var(--smoke); }
+.policyrow-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.policyrow-title {
+  font-size: 20px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: var(--white);
+}
+.policyrow-sub { font-size: 13px; color: var(--ash); margin-top: 6px; }
+.policyrow-badges { display: inline-flex; align-items: center; gap: 12px; flex: none; }
+.badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-control);
+  padding: 3px 8px;
+}
+
+.policyrow-metrics {
+  /* Four metrics spread the card evenly. auto-fit cannot be used here: the
+     attribution row spans 1/-1, which pins the track count, so a wider card
+     left empty tracks and bunched the figures to the left. */
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 32px;
+  margin: 24px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+}
+.rowmetric { min-width: 0; }
+.rowmetric.wide { grid-column: 1 / -1; }
+@media (max-width: 900px) { .policyrow-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .policyrow-metrics { grid-template-columns: minmax(0, 1fr); } }
+.rowmetric dt {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+  margin-bottom: 6px;
+}
+.rowmetric dd { margin: 0; font-size: 14px; color: var(--bone); min-width: 0; overflow-wrap: anywhere; }
+.rowmetric .ident { font-size: 12px; }
+/* Publishers are separate facts, not one string: give each its own chip of
+   space so three domains do not read as one. */
+.publisherlist { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+
+@media (max-width: 620px) {
+  .policyrow { padding: 20px; }
+  .policyrow-title { font-size: 17px; }
+  .metricstrip { gap: 10px 24px; }
+}
+
+
+/* ── the detail record: a dense fact header, then tabs ─────────────────── */
+
+main.page.detail { padding-top: 32px; }
+.page.detail > * + * { margin-top: 24px; }
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--hairline);
+}
+.detail-trigger {
+  font-size: clamp(24px, 3.6vw, 38px);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  max-width: 22ch;
+}
+.detail-sub { font-size: 14px; color: var(--ash); margin-top: 10px; }
+.detail-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  flex: none;
+  text-align: right;
+}
+.detail-coverage { font-size: 15px; }
+.detail-coverage .figure { font-size: 20px; }
+
+.factlist { margin: 20px 0 0; display: grid; gap: 20px; }
+.factlist dt {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+  margin-bottom: 6px;
+}
+.factlist dd { margin: 0; font-size: 15px; line-height: 1.55; color: var(--bone); }
+
+.basislist { display: grid; gap: 12px; margin-top: 20px; }
+.basisrow {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+.basisrow:last-child { border-bottom: 0; padding-bottom: 0; }
+.basisrow .ident { font-size: 13px; flex: 1; min-width: 12ch; }
+
+.determination {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: var(--sans);
+  font-size: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+@media (max-width: 620px) {
+  .detail-verdict { align-items: flex-start; text-align: left; }
 }

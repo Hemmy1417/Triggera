@@ -1,207 +1,200 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatGen } from "../lib/config";
 import { getPolicies, getStats, type Policy, type Stats } from "../lib/read";
-import { Stat, StateNote, Status } from "./components/bits";
+import { StateNote, Status } from "./components/bits";
+import { PolicyRow } from "./components/PolicyRow";
 
 type Load<T> = { state: "loading" } | { state: "ok"; data: T } | { state: "down"; why: string };
 
-/** A policy's headline, written from the trigger the two parties signed —
- *  the record's own words, never an id. */
-function headline(p: Policy): string {
-  const op =
-    p.operator === "GTE" ? "at or above" :
-    p.operator === "GT" ? "above" :
-    p.operator === "LTE" ? "at or below" : "below";
-  return `${p.metric} ${op} ${p.threshold} ${p.unit}`;
+/** The data views. A tab is a question a reader arrives with, not a category
+ *  of ours: what is live, what is being read, what has been decided. */
+const TABS = [
+  { id: "all", label: "All" },
+  { id: "live", label: "Live" },
+  { id: "investigating", label: "Under investigation" },
+  { id: "determined", label: "Determined" },
+  { id: "closed", label: "Closed" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
+function inTab(p: Policy, tab: TabId): boolean {
+  switch (tab) {
+    case "live":
+      return p.status === "ACTIVE" || p.status === "DRAFT";
+    case "investigating":
+      return p.status === "INVESTIGATING" || p.status === "PENDING_FINALITY";
+    case "determined":
+      return p.status === "FINAL" || (p.outcome !== "" && p.status !== "PAID");
+    case "closed":
+      return p.status === "PAID" || p.status === "EXPIRED" || p.status === "CANCELLED";
+    default:
+      return true;
+  }
 }
 
-export default function Home() {
+const SORTS = [
+  { id: "newest", label: "Newest" },
+  { id: "coverage", label: "Coverage" },
+  { id: "deadline", label: "Coverage ends" },
+] as const;
+type SortId = (typeof SORTS)[number]["id"];
+
+export default function PolicyBook() {
   const [stats, setStats] = useState<Load<Stats>>({ state: "loading" });
-  const [latest, setLatest] = useState<Load<Policy[]>>({ state: "loading" });
+  const [book, setBook] = useState<Load<{ total: number; policies: Policy[] }>>({
+    state: "loading",
+  });
+  const [tab, setTab] = useState<TabId>("all");
+  const [event, setEvent] = useState<string>("any");
+  const [sort, setSort] = useState<SortId>("newest");
 
   useEffect(() => {
     let live = true;
     getStats()
       .then((d) => live && setStats({ state: "ok", data: d }))
       .catch((e) => live && setStats({ state: "down", why: String(e?.message ?? e) }));
-    getPolicies(0, 6)
-      .then((d) => live && setLatest({ state: "ok", data: d.policies }))
-      .catch((e) => live && setLatest({ state: "down", why: String(e?.message ?? e) }));
+    getPolicies(0, 50)
+      .then((d) => live && setBook({ state: "ok", data: d }))
+      .catch((e) => live && setBook({ state: "down", why: String(e?.message ?? e) }));
     return () => {
       live = false;
     };
   }, []);
 
+  const eventTypes = useMemo(() => {
+    if (book.state !== "ok") return [];
+    return Array.from(new Set(book.data.policies.map((p) => p.event_type))).sort();
+  }, [book]);
+
+  const shown = useMemo(() => {
+    if (book.state !== "ok") return [];
+    const rows = book.data.policies
+      .filter((p) => inTab(p, tab))
+      .filter((p) => event === "any" || p.event_type === event);
+    const sorted = [...rows];
+    if (sort === "coverage") {
+      sorted.sort((a, b) => (BigInt(b.coverage_atto) > BigInt(a.coverage_atto) ? 1 : -1));
+    } else if (sort === "deadline") {
+      sorted.sort((a, b) => a.coverage_end_epoch - b.coverage_end_epoch);
+    }
+    return sorted;
+  }, [book, tab, event, sort]);
+
   return (
-    <>
-      <section className="room-inner" style={{ paddingTop: 72 }}>
-        <div className="grid two" style={{ gap: 48, alignItems: "start" }}>
-          <div style={{ display: "grid", gap: 24 }}>
-            <span className="announce">Parametric verification on GenLayer</span>
-            <h1 className="display">
-              Reality, put to
-              <br />
-              consensus.
-            </h1>
-            <p className="subheading measure">
-              A parametric policy names the condition that pays. When an event happens,
-              every validator fetches the evidence itself and reads it. Deterministic
-              code turns those readings into the determination, and the determination
-              moves the coverage.
-            </p>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <Link href="/policies" className="pill">
-                Read the policy book
-              </Link>
-              <Link href="/create" className="pill quiet">
-                Write a policy
-              </Link>
-            </div>
-          </div>
-
-          <div className="card">
-            <span className="eyebrow">On the contract now</span>
-            <div style={{ marginTop: 24 }}>
-              {stats.state === "loading" && (
-                <StateNote kind="loading">Reading the contract…</StateNote>
-              )}
-              {stats.state === "down" && (
-                <StateNote kind="unreachable">
-                  The contract could not be reached just now. This is the network, not
-                  the record: nothing here is empty, it is unread.
-                </StateNote>
-              )}
-              {stats.state === "ok" && (
-                <div className="stat-grid">
-                  <Stat
-                    label="Coverage in custody"
-                    value={formatGen(stats.data.escrow_atto)}
-                    unit="GEN"
-                  />
-                  <Stat label="Policies written" value={stats.data.policies} />
-                  <Stat label="Investigations run" value={stats.data.investigations} />
-                  <Stat
-                    label="Paid on triggers"
-                    value={formatGen(stats.data.paid_atto)}
-                    unit="GEN"
-                  />
-                </div>
-              )}
-            </div>
-            <p className="caption muted" style={{ marginTop: 24 }}>
-              Live from GenLayer Studio Next. Custody is every locked coverage and
-              unclaimed balance.
-            </p>
-          </div>
-        </div>
+    <main className="page book">
+      {/* the metric strip: dense, inline, above the record — never a hero */}
+      <section className="metricstrip">
+        {stats.state === "loading" && <span className="caption muted">Reading the contract…</span>}
+        {stats.state === "down" && (
+          <span className="caption" style={{ color: "var(--bone)" }}>
+            The contract could not be reached just now. Nothing below is empty; it is unread.
+          </span>
+        )}
+        {stats.state === "ok" && (
+          <>
+            <span className="metric">
+              <span className="metric-label">Coverage in custody</span>
+              <span className="metric-value">{formatGen(stats.data.escrow_atto)} GEN</span>
+            </span>
+            <span className="metric">
+              <span className="metric-label">Policies</span>
+              <span className="metric-value">{stats.data.policies}</span>
+            </span>
+            <span className="metric">
+              <span className="metric-label">Investigations</span>
+              <span className="metric-value">{stats.data.investigations}</span>
+            </span>
+            <span className="metric">
+              <span className="metric-label">Triggers met</span>
+              <span className="metric-value">{stats.data.satisfied}</span>
+            </span>
+            <span className="metric">
+              <span className="metric-label">Paid out</span>
+              <span className="metric-value">{formatGen(stats.data.paid_atto)} GEN</span>
+            </span>
+          </>
+        )}
       </section>
 
-      <section className="room">
-        <div className="room-inner">
-          <h2 className="heading">Why a panel, not an oracle.</h2>
-          <div className="grid two" style={{ marginTop: 48 }}>
-            <div className="window">
-              <div className="window-bar">
-                <i className="window-dot" />
-                <span className="eyebrow">A conventional oracle</span>
-              </div>
-              <div className="window-body">
-                <div className="muted">one source</div>
-                <div className="muted">↓</div>
-                <div className="muted">a value</div>
-                <div className="muted">↓</div>
-                <div className="muted">the contract pays</div>
-                <p className="body-sm muted" style={{ marginTop: 16, fontFamily: "var(--sans)" }}>
-                  Whoever controls the source controls the payout, and a source that
-                  disagrees with another has nowhere to be reconciled.
-                </p>
-              </div>
-            </div>
-            <div className="window">
-              <div className="window-bar">
-                <i className="window-dot" style={{ background: "var(--iris)" }} />
-                <span className="eyebrow">Triggera</span>
-              </div>
-              <div className="window-body">
-                <div>several publishers, agreed in advance</div>
-                <div className="muted">↓</div>
-                <div>every validator fetches and reads each one</div>
-                <div className="muted">↓</div>
-                <div>one voice per publisher, never an average</div>
-                <div className="muted">↓</div>
-                <div>code derives the determination</div>
-                <p className="body-sm muted" style={{ marginTop: 16, fontFamily: "var(--sans)" }}>
-                  When the publishers genuinely disagree, the protocol is allowed to say
-                  so: an undetermined record holds the money instead of guessing.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* tabs switch the data view */}
+      <nav className="tabs" aria-label="Policy views">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={t.id === tab ? "tab on" : "tab"}
+            onClick={() => setTab(t.id)}
+            aria-pressed={t.id === tab}
+          >
+            {t.label}
+          </button>
+        ))}
+        <Link href="/create" className="pill" style={{ marginLeft: "auto" }}>
+          Write a policy
+        </Link>
+      </nav>
 
-      <section className="room">
-        <div className="room-inner">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 24, flexWrap: "wrap" }}>
-            <h2 className="heading-sm">Latest policies</h2>
-            <Link href="/policies" className="ghost">
-              All policies →
-            </Link>
-          </div>
-          <div style={{ marginTop: 24 }}>
-            {latest.state === "loading" && (
-              <StateNote kind="loading">Reading the policy book…</StateNote>
-            )}
-            {latest.state === "down" && (
-              <StateNote kind="unreachable">
-                The policy book could not be reached just now.
-              </StateNote>
-            )}
-            {latest.state === "ok" && latest.data.length === 0 && (
-              <StateNote kind="empty">
-                No policy has been written on this contract yet.{" "}
-                <Link href="/create" className="ghost">Write the first</Link>.
-              </StateNote>
-            )}
-            {latest.state === "ok" && latest.data.length > 0 && (
-              <div className="tablewrap">
-                <table className="rows">
-                  <thead>
-                    <tr>
-                      <th>Policy</th>
-                      <th>Trigger</th>
-                      <th>Status</th>
-                      <th className="num">Coverage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {latest.data.map((p) => (
-                      <tr key={p.policy_id}>
-                        <td>
-                          <Link href={`/policies/${p.policy_id}`} className="title">
-                            {p.title}
-                          </Link>
-                          <div className="caption muted">
-                            {p.region}, {p.country}
-                          </div>
-                        </td>
-                        <td className="body-sm">{headline(p)}</td>
-                        <td>
-                          <Status state={p.status} />
-                        </td>
-                        <td className="num">{formatGen(p.coverage_atto)} GEN</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+      {/* the control surface: filters and sort are first-class */}
+      <div className="toolbar">
+        <label className="control">
+          <span className="control-label">Event</span>
+          <select value={event} onChange={(e) => setEvent(e.target.value)}>
+            <option value="any">Any</option>
+            {eventTypes.map((t) => (
+              <option key={t} value={t}>
+                {t.toLowerCase()}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="control">
+          <span className="control-label">Sort</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value as SortId)}>
+            {SORTS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {book.state === "ok" && (
+          <span className="caption muted" style={{ marginLeft: "auto" }}>
+            {shown.length} of {book.data.total}
+          </span>
+        )}
+      </div>
+
+      {book.state === "loading" && <StateNote kind="loading">Reading the policy book…</StateNote>}
+      {book.state === "down" && (
+        <StateNote kind="unreachable">
+          The policy book could not be read. This is the network, not the record.
+        </StateNote>
+      )}
+      {book.state === "ok" && shown.length === 0 && (
+        <StateNote kind="empty">
+          {book.data.total === 0 ? (
+            <>
+              No policy has been written on this contract yet.{" "}
+              <Link href="/create" className="ghost">Write the first</Link>.
+            </>
+          ) : (
+            <>No policy matches this view.</>
+          )}
+        </StateNote>
+      )}
+      {book.state === "ok" && shown.length > 0 && (
+        <div className="policyrows">
+          {shown.map((p) => (
+            <PolicyRow key={p.policy_id} policy={p} />
+          ))}
         </div>
-      </section>
-    </>
+      )}
+    </main>
   );
 }
+
+/** Re-exported so the row can render a status without importing twice. */
+export { Status };

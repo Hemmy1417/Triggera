@@ -663,9 +663,12 @@ def test_get_policies_paginates_newest_first(module, c):
     assert [p["policy_id"] for p in second["policies"]] == ["trg-000001"]
     assert json.loads(c.get_policies(3, 2))["policies"] == []
     assert json.loads(c.get_policies(99, 2))["policies"] == []
-    # the bounded page carries the view only; the frozen text is per policy
+    # The page carries the evidence basis — which publishers the panel may
+    # read is how a reader judges a policy at all, so it is not held back for
+    # the detail view. The frozen policy TEXT is, being unbounded.
     assert "terms_text" not in first["policies"][0]
-    assert "basis" not in first["policies"][0]
+    assert [b["origin"] for b in first["policies"][0]["basis"]] == [
+        b["origin"] for b in BASIS]
     assert first["policies"][0]["coverage_atto"] == str(COVERAGE)
 
 

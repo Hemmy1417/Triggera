@@ -27,9 +27,8 @@ export function explorerTx(hash: string): string {
 }
 
 const NAV: Array<{ href: string; label: string }> = [
-  { href: "/policies", label: "Policies" },
   { href: "/create", label: "Write a policy" },
-  { href: "/rules", label: "Rules" },
+  { href: "/rules", label: "How it works" },
 ];
 
 /** The persistent navbar: the mark and wordmark, sentence-case links, the

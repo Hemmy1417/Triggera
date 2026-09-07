@@ -1802,8 +1802,13 @@ Respond ONLY with JSON:
     # ── views ────────────────────────────────────────────────────────────────
 
     def _policy_view(self, p: Policy) -> dict:
+        """Every view of a policy carries its evidence basis. Which publishers
+        the panel may read is not a detail behind a click: it is how a reader
+        judges the policy at all, so the list carries it too. It is bounded
+        (at most MAX_BASIS_ENTRIES) and frozen at drafting."""
         return {
             "policy_id": p.policy_id,
+            "basis": json.loads(self.basis_store.get(p.policy_id) or "[]"),
             "insurer": p.insurer, "policyholder": p.policyholder,
             "status": p.status,
             "title": p.title, "notional": p.notional,
@@ -1864,7 +1869,6 @@ Respond ONLY with JSON:
             return ""
         view = self._policy_view(p)
         view["terms_text"] = self.terms_store.get(p.policy_id) or ""
-        view["basis"] = json.loads(self.basis_store.get(p.policy_id) or "[]")
         return json.dumps(view)
 
     @gl.public.view

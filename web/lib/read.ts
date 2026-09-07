@@ -63,6 +63,26 @@ export async function getPolicies(
   )) as { total: number; policies: Policy[] };
 }
 
+/**
+ * Every policy this wallet is a party to, NEWEST FIRST.
+ *
+ * The contract's actor index appends, so `get_policies_for` answers oldest
+ * first and the reversal happens here rather than at each call site — the
+ * composer reads its own newest policy back to learn the id the contract
+ * assigned it, and a list that quietly changed order would hand it the wrong
+ * one.
+ */
+export async function getPoliciesFor(addr: string, force = false): Promise<Policy[]> {
+  const v = await view(
+    "get_policies_for",
+    [addr],
+    `policies-for:${addr.toLowerCase()}`,
+    force,
+  );
+  const list = Array.isArray(v) ? (v as Policy[]) : [];
+  return [...list].reverse();
+}
+
 export async function getPolicy(id: string, force = false): Promise<Policy | null> {
   const v = await view("get_policy", [id], `policy:${id}`, force);
   return (v as Policy) ?? null;
@@ -95,6 +115,50 @@ export async function getClaimable(addr: string): Promise<string> {
     args: [addr],
   });
   return String(raw ?? "0");
+}
+
+/**
+ * The bounds and vocabularies the writes enforce, reported by the contract
+ * itself. A composer that guesses a limit eventually guesses wrong and the
+ * user pays for it in a reverted transaction, so the source of truth for the
+ * lists a form offers is this view — not a constant the frontend maintains.
+ * Cached for five minutes: it changes only when the contract is redeployed.
+ */
+export type Config = {
+  version: string;
+  min_coverage_atto: string;
+  max_coverage_atto: string;
+  min_premium_atto: string;
+  threshold: [number, number];
+  measurement_hours: [number, number];
+  duration_hours: [number, number];
+  radius_km: [number, number];
+  min_independent: [number, number];
+  terms_chars: [number, number];
+  title_chars: [number, number];
+  notional_chars: [number, number];
+  place_chars: [number, number];
+  metric_chars: [number, number];
+  unit_chars: [number, number];
+  basis_entries: [number, number];
+  window_seconds: [number, number];
+  claim_grace_seconds: [number, number];
+  coverage_period_seconds: [number, number];
+  default_windows: { claim_grace: number; finality: number; appeal: number };
+  appeal_bond_bps: number;
+  appeal_bond_floor_atto: string;
+  event_types: string[];
+  operators: string[];
+  source_kinds: string[];
+  source_classes: string[];
+  outcomes: string[];
+  hold_reasons: string[];
+  evidence_flags: string[];
+  statuses: string[];
+};
+
+export async function getConfig(force = false): Promise<Config> {
+  return (await view("get_config", [], "config", force, 300_000)) as Config;
 }
 
 export type BasisEntry = { kind: string; origin: string; class: "INDEPENDENT" | "PARTY" };
