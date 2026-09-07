@@ -1,0 +1,3 @@
+WEATHER HISTORY — EASTERN SAMAR — TROPICAL STORM 07
+Commercial weather provider, station-network summary for the 24-hour window covering the storm's passage.
+Highest 24-hour maximum sustained wind speed recorded by our Eastern Samar network: 152 km/h at Guiuan. Gusts to 180 km/h.

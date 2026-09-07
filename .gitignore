@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+.env.local
+node_modules/
+.next/
+.data/
+*.log
+web/arc*.transcript.json
+tests/work/
+artifacts/

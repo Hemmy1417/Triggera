@@ -1,0 +1,4 @@
+WEATHER HISTORY — EASTERN SAMAR — TROPICAL STORM 07
+Commercial weather provider, station-network summary for the 24-hour window covering the storm's passage.
+Highest 24-hour maximum sustained wind speed recorded by our Eastern Samar network: 149 km/h at Borongan.
+Gusts to 178 km/h. Network coverage: 6 stations inside the province; the Guiuan station was offline for 3 hours.
