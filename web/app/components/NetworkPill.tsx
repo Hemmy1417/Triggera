@@ -2,7 +2,7 @@
 
 import { STUDIO_NEXT } from "../../lib/chain";
 import { useWallet } from "../../lib/wallet";
-import { Hex } from "./bits";
+import { Dot } from "./bits";
 
 /** "GenLayer Studio Next" → "Studio Next": the pill has one line. */
 const CHAIN_SHORT = STUDIO_NEXT.name.replace(/^GenLayer\s+/, "");
@@ -20,7 +20,7 @@ export function NetworkPill() {
   if (chainOk) {
     return (
       <span className="netpill" title={`Connected on ${STUDIO_NEXT.name}`}>
-        <Hex fill />
+        <Dot state="active" />
         {CHAIN_SHORT}
       </span>
     );
@@ -28,11 +28,11 @@ export function NetworkPill() {
   return (
     <button
       type="button"
-      className="netpill warn"
+      className="netpill wrong"
       onClick={() => void switchNetwork()}
       title={`Switch your wallet to ${STUDIO_NEXT.name}`}
     >
-      <Hex />
+      <Dot state="not-satisfied" />
       Wrong network, switch
     </button>
   );

@@ -172,3 +172,14 @@ export function sameAddress(a: string | null | undefined, b: string | null | und
   if (!a || !b) return false;
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
+
+/**
+ * The READ chain: the same definition pointing at the same-origin proxy, so
+ * reads never leave the page's origin and the proxy can refuse anything that
+ * is not a read of the configured contract. `createClient` mutates the chain
+ * object it is given, so this is a clone, never STUDIO_NEXT itself.
+ */
+export const PROXY_CHAIN = {
+  ...STUDIO_NEXT,
+  rpcUrls: { default: { http: ["/api/rpc"] } },
+} as typeof STUDIO_NEXT;
