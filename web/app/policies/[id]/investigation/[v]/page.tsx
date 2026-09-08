@@ -577,15 +577,38 @@ export default function InvestigationPage({
                   </p>
                 )}
 
+                {/* What consensus does and does not cover here, said plainly.
+                    For a row fetched THIS round, every validator agreed the
+                    reading and the three checks against its own fetch, and an
+                    INDEPENDENT row's reading must match exactly or the round
+                    is refused. The passage itself is different: validators
+                    check that the leader's digest covers the bytes the leader
+                    stored, not that those bytes match what they fetched. So
+                    the excerpt is the record's, sealed and re-checkable, but
+                    it is not itself corroborated — and calling it "the
+                    passage the panel read" claimed a agreement the protocol
+                    does not make. A RECORDED row IS compared verbatim between
+                    nodes, because both are reading the same stored bytes. */}
                 {r.excerpt ? (
                   <details className="technical">
-                    <summary>The passage the panel read</summary>
+                    <summary>
+                      {r.basis === "RECORDED"
+                        ? "The stored passage, read identically by every validator"
+                        : "The passage the leader recorded, sealed by its digest"}
+                    </summary>
                     <p
                       className="body-sm"
                       style={{ marginTop: "var(--gap-tight)", whiteSpace: "pre-wrap" }}
                     >
                       {r.excerpt}
                     </p>
+                    {r.basis !== "RECORDED" ? (
+                      <p className="caption muted" style={{ marginTop: 10 }}>
+                        The reading taken from this page was agreed by every validator against
+                        its own fetch. This passage is the leader&apos;s record of what it
+                        read, fixed by the digest above so a later panel reads the same bytes.
+                      </p>
+                    ) : null}
                   </details>
                 ) : null}
 

@@ -486,6 +486,22 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
               <span className="figure">{formatGen(p.refund_atto)} GEN</span> returned to the
               insurer. A trigger nobody could verify is not paid, and the money is not stranded.
             </p>
+          ) : Number(p.evidence_version) > Number(p.judged_version) ? (
+            /* A recorded outcome is only the CURRENT word while no newer claim
+               is waiting on a panel. The contract never clears p.outcome when
+               a round ends without paying: promote() on UNDETERMINED sets
+               status back to ACTIVE and leaves the outcome standing, and
+               settle() on NOT_SATISFIED does the same. So once a fresh claim
+               is filed, the fields below still hold the PREVIOUS round's
+               verdict until the new one is promoted — and this panel would
+               have announced "the trigger was not met" over a live
+               investigation. Gate on the versions, which cannot go stale. */
+            <p className="body" style={{ marginTop: 16 }}>
+              A newer claim is on the record and has not been determined yet, so nothing
+              here is settled. The coverage of{" "}
+              <span className="figure">{formatGen(p.coverage_atto)} GEN</span> stays locked
+              while the panel reads.
+            </p>
           ) : p.outcome === "SATISFIED" ? (
             <p className="body" style={{ marginTop: 16 }}>
               The trigger is met. After the appeal window closes, anyone may settle and the whole{" "}
