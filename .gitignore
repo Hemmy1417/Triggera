@@ -10,4 +10,9 @@ web/arc*.transcript.json
 tests/work/
 artifacts/
 tsconfig.tsbuildinfo
+# The arc transcripts: arc*.log is what the script chose to say, and is
+# ignored because arc*.stdout is a superset of it -- stdout also carries the
+# SDK's own stderr, which is where the two unattributed refusals show up as
+# `sim_estimateTransactionFees: execution failed`. That is the evidence the
+# refusals were real, so the fuller file is the one kept.
 web/arc*.log
