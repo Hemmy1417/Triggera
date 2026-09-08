@@ -1,0 +1,304 @@
+TRIGGERA payout arc — policy trg-000001 at 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42
+   STATE on entry: status=ACTIVE evidence_v1 judged_v1 pending_v0 outcome=UNDETERMINED/EVIDENCE_INSUFFICIENT flag=INSUFFICIENT pubs=0 qual=0 contra=0 appeal_open=false payout=0
+   MONEY on entry: escrow 100000000000000000 (0.1000 GEN)  paid 0  claimable[holder] 0  claimable[insurer] 0
+         stats policies 2 active 1 investigations 1 satisfied 0
+   ok   coverage is 0.1 GEN (100000000000000000)
+   ok   the policy demands a 0.05 GEN bond (50000000000000000)
+   ok   policyholder is the YES key
+   ok   insurer is the CREATOR key
+   ok   min_independent is 2
+   ok   the trigger is GTE 150 km/h
+
+PLAN: entering at status ACTIVE, evidence v1, judged v1. Acts already on the record are skipped.
+
+ACT 8 - the policyholder files claim version 2 (agency + press + station; the provider is NOT cited)
+   claim deadline epoch 1788906522 — 595s of margin left
+   ok   the coverage period is at least one 24h measurement window wide
+   the event window is still running, 355s to go (then 900s of grace to file)
+   the event window is still running, 295s to go (then 900s of grace to file)
+   the event window is still running, 235s to go (then 900s of grace to file)
+   the event window is still running, 175s to go (then 900s of grace to file)
+   the event window is still running, 115s to go (then 900s of grace to file)
+   the event window is still running, 55s to go (then 900s of grace to file)
+   event window 1788819222 -> 1788905622  (2026-09-07T22:13:42.000Z -> 2026-09-08T22:13:42.000Z)
+   that is the whole coverage period, one 24h measurement window wide
+   ok   the event window ends after it starts
+   ok   the window sits inside the coverage period
+   file_claim tx 0xbc152aeb9606a7a8ec9b564a8c3486d6c1545c0d7393d5bbc23a4c02bcdd3619
+   file_claim: FINALIZED MAJORITY_AGREE leader=SUCCESS
+   ok   file_claim landed SUCCESS
+   STATE after the claim: status=INVESTIGATING evidence_v2 judged_v1 pending_v0 outcome=UNDETERMINED/EVIDENCE_INSUFFICIENT flag=INSUFFICIENT pubs=0 qual=0 contra=0 appeal_open=false payout=0
+   ok   status is INVESTIGATING (got INVESTIGATING)
+   ok   evidence version advanced to 2 (got 2)
+   ok   judged_version is still 1 — filing decides nothing (got 1)
+   ok   the claimed reading 157 is on the record (got 157)
+   ok   three rows recorded, the provider deliberately absent (got 3)
+   ok   row ids restart at EV-001 for the new version (got EV-001,EV-002,EV-003)
+   ok   two INDEPENDENT rows (got 2)
+   ok   one PARTY row — the station log (got 1)
+   ok   the weather provider is NOT in the filed package
+   rows: EV-001 INDEPENDENT/METEOROLOGICAL_AGENCY, EV-002 INDEPENDENT/NEWS_REPORT, EV-003 PARTY/STATION_LOG
+   MONEY after the claim: escrow 100000000000000000 (0.1000 GEN)  paid 0  claimable[holder] 0  claimable[insurer] 0
+         stats policies 2 active 1 investigations 1 satisfied 0
+   ok   filing moved no custody (100000000000000000)
+   ok   filing paid nobody (0)
+
+ACT 9a - the panel (permissionless, run by an unrelated third party)
+   three pages are fetched live; this is a full LLM round, allow ~20 minutes
+   investigate tx 0x6b675da1ea04116fbf1d4d85be7da485bbd359a413c702efdda2bd31cbf02137
+   investigate: ... ACCEPTED
+   investigate: FINALIZED MAJORITY_AGREE leader=SUCCESS
+   ok   investigate landed SUCCESS
+
+   THE FIRST DETERMINATION (v2)
+   outcome        SATISFIED
+   evidence_flag  SUFFICIENT
+   publishers     2  qualifying 2  contradicting 0
+   reason         EV-001 is an official meteorological bulletin for Eastern Samar naming Guiuan station within the insured area and stating a 24-hour maximum sustained wind of 157 km/h; EV-002 independently reports sustained winds of 161 km/h across Eastern Samar during the same 24-hour passage. EV-003, a party-class
+   row EV-001 INDEPENDENT/METEOROLOGICAL_AGENCY raw.githubusercontent.com readable=true reading=157 window_ok=true geo_ok=true kind_matches=true
+   row EV-002 INDEPENDENT/NEWS_REPORT cdn.jsdelivr.net readable=true reading=161 window_ok=true geo_ok=true kind_matches=true
+   row EV-003 PARTY/STATION_LOG raw.githack.com readable=true reading=153 window_ok=true geo_ok=true kind_matches=true
+   ok   the record is SUFFICIENT (got SUFFICIENT)
+   ok   TWO independent publishers spoke (got 2)
+   ok   BOTH read past the 150 km/h trigger (got 2)
+   ok   nothing contradicted (got 0)
+   ok   the trigger was met: SATISFIED (got SATISFIED)
+   ok   the first round recorded three rows (got 3)
+   ok   and the provider host is absent from them — the insurer, not the claimant, brings it
+   MONEY after the panel: escrow 100000000000000000 (0.1000 GEN)  paid 0  claimable[holder] 0  claimable[insurer] 0
+         stats policies 2 active 1 investigations 2 satisfied 0
+   ok   custody still holds exactly the coverage (100000000000000000)
+   ok   nothing has ever been paid (0)
+
+ACT 9b - promotion #1: the record becomes state after the finality window
+   the finality window: 1172s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 1126s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 1079s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 1033s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 985s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 938s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 891s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 844s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 797s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 751s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 704s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 656s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 610s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 563s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 517s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 470s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 423s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 377s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 327s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 280s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 234s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 187s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 140s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 94s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window: 47s to go (pending_until_epoch=1788906932 + 330s clock margin)
+   the finality window is open (pending_until_epoch=1788906932, local now 1788907263)
+   promote tx 0xf864697454dbe00e30e1c543102654e67b59d2ec9bac837ec146c02e16e8e6ab
+   promote: FINALIZED MAJORITY_AGREE leader=SUCCESS
+   ok   promote landed SUCCESS (permissionless)
+   STATE after promotion #1: status=FINAL evidence_v2 judged_v2 pending_v0 outcome=SATISFIED/- flag=SUFFICIENT pubs=2 qual=2 contra=0 appeal_open=false payout=0
+   ok   the record was promoted (status FINAL, judged v2)
+   ok   SATISFIED is now STATE, not just a record (got SATISFIED)
+   ok   the state carries the SUFFICIENT flag (got SUFFICIENT)
+   ok   the derivation was copied onto the policy: 2/2/0 (got 2/2/0)
+
+ACT 10a - the INSURER appeals with a 0.0500 GEN bond, adding the provider row (149 km/h)
+   appeal window closes at epoch 1788908172 — 860s of local slack
+   MONEY before the appeal: escrow 100000000000000000 (0.1000 GEN)  paid 0  claimable[holder] 0  claimable[insurer] 0
+         stats policies 2 active 1 investigations 2 satisfied 0
+   appeal tx 0xa6b9ccdff6eb6f02dfd199a0879f15ade37eca8869556d63ea6037c21095b738
+   appeal: FINALIZED MAJORITY_AGREE leader=SUCCESS
+   ok   appeal landed SUCCESS with the exact bond
+   STATE after the appeal: status=FINAL evidence_v3 judged_v2 pending_v0 outcome=SATISFIED/- flag=SUFFICIENT pubs=2 qual=2 contra=0 appeal_open=true payout=0
+   ok   an appeal is open (poll this, not the status)
+   ok   the status is UNCHANGED at FINAL — an appeal is not a status (got FINAL)
+   ok   the appellant is the insurer (got 0x86ddeafc53b2e194aad4d74d265ab7cb741118b5)
+   ok   the appealed version is 2 (got 2)
+   ok   the appeal writes version 3 (got 3)
+   ok   evidence_version advanced to 3 (got 3)
+   ok   the appealed package holds the three prior rows plus one (got 4)
+   ok   the provider entered as EV-004
+   ok   EV-004 is labelled as the appellant's addition (got [APPELLANT] Weather provider daily history)
+   ok   EV-004 inherits its class and kind from the frozen basis (got INDEPENDENT/WEATHER_PROVIDER)
+   MONEY after the appeal: escrow 150000000000000000 (0.1500 GEN)  paid 0  claimable[holder] 0  claimable[insurer] 0
+         stats policies 2 active 1 investigations 2 satisfied 0
+   ok   the bond is now in custody: 100000000000000000 + 50000000000000000 = 150000000000000000
+   ok   custody holds coverage + bond (0.1500 GEN)
+   ok   the bond is HELD, not credited to the policyholder (0)
+   ok   the bond is HELD, not credited to the insurer (0)
+
+ACT 10b - the re-hearing: EV-001..EV-003 are read from the RECORDED bytes, only EV-004 is fetched live
+   the appeal lapses (bond refunded to the insurer, by anyone) at epoch 1788910925 — 3556s away
+   MONEY before the re-hearing: escrow 150000000000000000 (0.1500 GEN)  paid 0  claimable[holder] 0  claimable[insurer] 0
+         stats policies 2 active 1 investigations 2 satisfied 0
+   this is a second full LLM round, allow ~20 minutes
+   re_investigate tx 0x6e7f2ec6a8d998259cd53fa4213d37adff64acc1b9880df1fc98df63de0831ef
+   re_investigate: ... ACCEPTED
+   re_investigate: FINALIZED MAJORITY_AGREE leader=SUCCESS
+   ok   re_investigate landed SUCCESS (permissionless)
+   contract returned: 
+
+   THE RE-HEARING (v3) — the whole point of the arc
+   outcome        SATISFIED
+   evidence_flag  SUFFICIENT
+   publishers     3  qualifying 2  contradicting 1
+   reason         The record is sufficient because all four readable sources state a maximum sustained wind value for Eastern Samar over a 24-hour storm-passage window, with EV-001 giving 157 km/h at Guiuan and EV-002 giving 161 km/h across the eastern coast. There is a material reading contradiction because EV-004, 
+   row EV-001 INDEPENDENT/METEOROLOGICAL_AGENCY raw.githubusercontent.com readable=true reading=157 window_ok=true geo_ok=true kind_matches=true
+   row EV-002 INDEPENDENT/NEWS_REPORT cdn.jsdelivr.net readable=true reading=161 window_ok=true geo_ok=true kind_matches=true
+   row EV-003 PARTY/STATION_LOG raw.githack.com readable=true reading=153 window_ok=true geo_ok=true kind_matches=true
+   row EV-004 INDEPENDENT/WEATHER_PROVIDER rawcdn.githack.com readable=true reading=149 window_ok=true geo_ok=true kind_matches=true
+   ok   the re-heard record is still SUFFICIENT (got SUFFICIENT)
+   ok   THREE publishers now speak (got 3)
+   ok   two still read past the trigger (got 2)
+   ok   exactly ONE publisher contradicts (got 1)
+   ok   the provider row is present in the re-heard record
+   ok   and it is the PROVIDER that dissents, reading 149 km/h against a 150 threshold (got 149)
+   ok   the agency still reads 157 (got 157)
+   ok   the press still reads 161 (got 161)
+   ok   SATISFIED STANDS — a contradicting source did not flip a majority (got SATISFIED)
+   ok   the outcome string is unchanged (SATISFIED -> SATISFIED), so the appeal FAILED
+   ok   the provider host is in the re-heard round
+   MONEY after the re-hearing: escrow 150000000000000000 (0.1500 GEN)  paid 0  claimable[holder] 50000000000000000  claimable[insurer] 0
+         stats policies 2 active 1 investigations 3 satisfied 0
+   ok   THE FORFEITED BOND IS CREDITED TO THE POLICYHOLDER: 0 + 50000000000000000 = 50000000000000000
+   ok   the insurer was credited nothing (0)
+   ok   custody is unchanged — the atto only changed owner on the ledger (150000000000000000)
+   ok   the investigation count advanced (3)
+   ok   still nothing paid out (0)
+   STATE after the re-hearing: status=PENDING_FINALITY evidence_v3 judged_v2 pending_v3 outcome=-/- flag=SUFFICIENT pubs=2 qual=2 contra=0 appeal_open=false payout=0
+   ok   the appeal is closed (got false)
+   ok   the re-hearing armed a fresh finality window (status PENDING_FINALITY)
+
+ACT 10c - promotion #2: mandatory. re_investigate reset the outcome to "" and armed a NEW window
+   ok   the outcome was reset by the re-hearing — without this promote, settle refuses (got "")
+   the second finality window: 1168s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 1121s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 1074s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 1027s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 980s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 933s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 887s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 840s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 793s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 745s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 699s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 652s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 605s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 559s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 511s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 464s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 418s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 370s to go (pending_until_epoch=1788908289 + 330s clock margin)
+GenLayer RPC error (gen_call): fetch failed
+   (read get_policy transport wobble, retry 1)
+   the second finality window: 321s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 274s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 227s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 180s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 133s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 86s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window: 35s to go (pending_until_epoch=1788908289 + 330s clock margin)
+   the second finality window is open (pending_until_epoch=1788908289, local now 1788908620)
+   promote tx 0x684d4ac6a1bd1187fdc927309a8d027f90b5808d2e55ca0462c8c24379b14c39
+   promote: FINALIZED MAJORITY_AGREE leader=SUCCESS
+   ok   promote #2 landed SUCCESS
+   STATE after promotion #2: status=FINAL evidence_v3 judged_v3 pending_v0 outcome=SATISFIED/- flag=SUFFICIENT pubs=3 qual=2 contra=1 appeal_open=false payout=0
+   ok   the judged version is now 3 (got 3)
+   ok   the re-heard SATISFIED is now state (got SATISFIED)
+   ok   the state carries 3 publishers / 2 qualifying / 1 contradicting (got 3/2/1)
+
+ACT 11 - settlement: the WHOLE coverage is credited to the policyholder
+   the second appeal window: 1184s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 1137s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 1091s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 1044s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 997s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 949s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 902s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 854s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 808s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 761s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 714s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 667s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 619s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 571s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 524s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 478s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 431s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 384s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 337s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 289s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 242s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 195s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 149s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 102s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 55s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window: 8s to go (appeal_until_epoch=1788909534 + 330s clock margin)
+   the second appeal window is open (appeal_until_epoch=1788909534, local now 1788909865)
+   MONEY before settle: escrow 150000000000000000 (0.1500 GEN)  paid 0  claimable[holder] 50000000000000000  claimable[insurer] 0
+         stats policies 2 active 1 investigations 3 satisfied 0
+   settle tx 0x6e7baafb6036bdf13501644d63a7aa9b46ab2b40b402f5dde37135a8aeec5abf
+   settle: FINALIZED MAJORITY_AGREE leader=SUCCESS
+   ok   settle landed SUCCESS (permissionless: run by a third party who is paid nothing)
+   STATE after settle: status=PAID evidence_v3 judged_v3 pending_v0 outcome=SATISFIED/- flag=SUFFICIENT pubs=3 qual=2 contra=1 appeal_open=false payout=100000000000000000
+   ok   status is PAID (got PAID)
+   ok   the payout is the whole coverage, no split, no rounding (100000000000000000)
+   MONEY after settle: escrow 150000000000000000 (0.1500 GEN)  paid 100000000000000000  claimable[holder] 150000000000000000  claimable[insurer] 0
+         stats policies 2 active 0 investigations 3 satisfied 1
+   ok   the coverage is credited to the policyholder: 50000000000000000 + 100000000000000000 = 150000000000000000
+   ok   the policyholder is owed coverage + forfeited bond = 0.1500 GEN
+   ok   settling credited the insurer nothing (0)
+   ok   paid_atto advanced by exactly the coverage (100000000000000000)
+   ok   the satisfied count advanced (1)
+   ok   the active count fell (0)
+   ok   custody is unchanged at settle — crediting is not paying (150000000000000000)
+   settle is one-shot:
+GenLayer RPC error (sim_estimateTransactionFees): execution failed
+   FAIL settle refused: "nothing to settle in PAID"
+        full error: execution failed | Missing or invalid parameters.
+Double check you have provided the correct parameters. | 2.56.3 | InvalidInputRpcError
+
+ACT 12 - the policyholder withdraws: ONE claim() moves bond + coverage
+   ok   the ledger owes the policyholder 0.1500 GEN (got 150000000000000000)
+   MONEY before the withdrawal: escrow 150000000000000000 (0.1500 GEN)  paid 100000000000000000  claimable[holder] 150000000000000000  claimable[insurer] 0
+         stats policies 2 active 0 investigations 3 satisfied 1
+   claim tx 0x774703402fae77f5c65833b8980b330260110120cdfb825bdc0c8598a796ef20
+   claim: FINALIZED MAJORITY_AGREE leader=SUCCESS
+   ok   claim landed SUCCESS
+   MONEY after the withdrawal: escrow 0 (0.0000 GEN)  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 0
+         stats policies 2 active 0 investigations 3 satisfied 1
+   ok   the policyholder ledger is zeroed (0)
+   ok   custody fell by exactly what left: 150000000000000000 - 150000000000000000 = 0
+   ok   CUSTODY RECONCILES TO ZERO for this policy (0)
+   ok   paid_atto is the settlement figure, not the withdrawal (100000000000000000)
+   claim is one-shot:
+GenLayer RPC error (sim_estimateTransactionFees): execution failed
+   FAIL claim refused: "nothing claimable"
+        full error: execution failed | Missing or invalid parameters.
+Double check you have provided the correct parameters. | 2.56.3 | InvalidInputRpcError
+   MONEY at the end: escrow 0 (0.0000 GEN)  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 0
+         stats policies 2 active 0 investigations 3 satisfied 1
+
+RECONCILIATION
+   STATE final: status=PAID evidence_v3 judged_v3 pending_v0 outcome=SATISFIED/- flag=SUFFICIENT pubs=3 qual=2 contra=1 appeal_open=false payout=100000000000000000
+   ok   the policy ends PAID (got PAID)
+   ok   the outcome of record is SATISFIED (got SATISFIED)
+   ok   the judged version of record is 3 (got 3)
+   ok   the payout of record is the whole coverage (100000000000000000)
+   ok   three panel rounds ran across the policy's life (got 3)
+   ok   one trigger was met (got 1)
+   ok   no policy is active (got 0)
+   ok   paid_atto is exactly the coverage (100000000000000000)
+   ok   the contract holds nothing (0)
+   ok   the policyholder is owed nothing further (0)
+
+   0.1 GEN coverage + 0.05 GEN forfeited bond left the contract in one transfer to
+   0x57a7dc8ea2d2de0a5906eb28902b8d677dfc657c. The insurer appealed a determination it disliked,
+   added a source that disagreed, and the majority held: three publishers, two past
+   the trigger, one short. The bond paid for the noise.
+
+FAILED: 2 - settle refused: "nothing to settle in PAID"; claim refused: "nothing claimable"

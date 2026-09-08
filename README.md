@@ -179,8 +179,10 @@ transcript beside itself (untracked).
 | 5–6 | `arc-panel.mjs` | a claim filed (four sources recorded: three INDEPENDENT, one PARTY) and a real panel round. Every evidence URL pointed at a commit that had not been published, so nothing was readable — the contract returned UNDETERMINED · EVIDENCE_INSUFFICIENT with custody unmoved. When the panel cannot read, it does not pay |
 | 7 | `arc-promote.mjs` | the UNDETERMINED hold promoted the policy back to ACTIVE; nothing paid, the coverage still in custody |
 
-The payout arc (`web/scripts/arc-payout.mjs`) has **not** been run. No payout,
-appeal, bond forfeiture or settlement has happened on this deployment.
+| 8–12 | `arc-payout.mjs` | the payout path, end to end. A second claim citing the agency and the press only; the panel read both live and returned SATISFIED on 2 of 2. The insurer then appealed with a 0.05 GEN bond and **added the source that disagreed** — the weather provider at 149 km/h. The re-hearing counted three publishers, two past the trigger and one short: **SATISFIED stood**, the appeal failed and its bond was forfeited to the policyholder. Settlement moved the whole 0.1 GEN coverage, and one `claim()` withdrew coverage and bond together. Custody ended at zero |
+
+Every act above has run on this deployment. The eight transactions of the
+payout arc are listed in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
@@ -227,13 +229,19 @@ Repo: <https://github.com/Hemmy1417/Triggera>
 
 ## Honest limitations
 
-**The payout arc has not been run on chain.** What has run against this
-deployment is custody, cancellation, the refusals, one claim, one panel round
-and one promotion. No payout, no appeal, no bond forfeiture and no settlement
-has occurred on chain. The payout path is exercised in the direct suite and
-written as `web/scripts/arc-payout.mjs`; until that script runs, treat the
-settlement behaviour described above as what the contract *does*, not as
-something demonstrated live.
+**Two refusals were demonstrated but not attributed.** Re-running `settle` on
+a PAID policy and `claim` with an empty balance were both refused, which is the
+property that matters. Studio Next returned a bare `InvalidInputRpcError` at
+fee estimation rather than the contract's own sentence, so that run does not
+prove *which* rule refused them. The arc records these separately from its
+passing checks rather than counting them as proofs; the sentences themselves
+are pinned in the direct suite.
+
+**One policy, one storm.** The payout arc ran against `trg-000001` with the
+`storm-07` fixtures. The `storm-12` (NOT_SATISFIED, expiry) and `storm-07b`
+(UNDETERMINED, then refiled) scenarios in `evidence/` are written and have not
+been run on chain; the contract's behaviour for them is covered by the direct
+suite only.
 
 **The one panel round that ran on chain read nothing.** Its evidence URLs
 resolved to a commit that had not been published, so every page 404'd and the

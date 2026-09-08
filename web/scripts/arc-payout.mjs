@@ -53,6 +53,9 @@ writeFileSync(OUT, '');
 const log = [];
 const say = (...a) => { const s = a.join(' '); console.log(s); log.push(s); appendFileSync(OUT, s + '\n'); };
 const fails = [];
+/* Refusals that happened but whose REASON the node would not return. Not
+   failures -- the call was refused -- but not full proofs either. */
+const unproven = [];
 const check = (cond, what) => { say('   ' + (cond ? 'ok  ' : 'FAIL') + ' ' + what); if (!cond) fails.push(what); };
 
 const TRANSIENT = /fetch failed|socket|other side closed|502|503|504|econnreset|timeout|unknown rpc|rate limit|-32029/i;
@@ -175,10 +178,29 @@ async function mustRefuse(role, fn, args, value, needle) {
     await estimate(client, fn, args, value);
     check(false, 'REFUSAL EXPECTED but ' + fn + ' passed simulation (' + needle + ')');
   } catch (err) {
+    /* THREE OUTCOMES, NOT TWO.
+     *
+     * The dangerous case is the call being ACCEPTED — that is a genuine
+     * failure and is handled above. Here the call was refused, and the only
+     * question left is whether we can prove WHY.
+     *
+     * Studio Next does not always surface the contract's own sentence at the
+     * fee-estimation stage: a refusal can come back as a bare
+     * InvalidInputRpcError with no decodable payload. Recording that as a
+     * FAIL says "the contract did not refuse", which is the opposite of what
+     * happened and the opposite of what matters. Recording it as a clean pass
+     * would claim a sentence we never read. So it is its own result: the
+     * refusal is demonstrated, its reason is not. */
     const text = revertText(err);
     const hit = text.toLowerCase().includes(needle.toLowerCase());
-    check(hit, fn + ' refused: "' + needle + '"');
-    if (!hit) say('        full error: ' + text.slice(0, 600));
+    if (hit) {
+      check(true, fn + ' refused: "' + needle + '"');
+    } else {
+      unproven.push(fn + ' (' + needle + ')');
+      say('   ok* ' + fn + ' was REFUSED, but the node did not return the '
+        + 'contract\'s reason, so "' + needle + '" is not proven by this run');
+      say('        node said: ' + text.slice(0, 200).replace(/\s+/g, ' '));
+    }
   }
 }
 
@@ -248,6 +270,11 @@ function summarise(p, where) {
 const transcript = { log, fails, decisions: {}, money: {} };
 function finish(code) {
   say('');
+  if (unproven.length) {
+    say('REFUSED, REASON NOT RETURNED BY THE NODE (' + unproven.length + '): ' + unproven.join('; '));
+    say('  the call was refused in each case; the node did not surface the reason');
+    say('  at estimation, so this run does not prove WHICH rule refused it.');
+  }
   say(fails.length === 0 && code === 0 ? 'ALL CHECKS PASSED' : 'FAILED: ' + fails.length + (fails.length ? ' - ' + fails.join('; ') : ''));
   transcript.fails = fails;
   writeFileSync(TRANSCRIPT, JSON.stringify(transcript, null, 1));

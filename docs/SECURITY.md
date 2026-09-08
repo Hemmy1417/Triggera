@@ -363,22 +363,34 @@ itself and the live acts in section 8.
 
 ---
 
-## 8. What has not been demonstrated on chain
+## 8. What the chain has now shown, and what it has not
 
-**The payout arc has not run.** `web/scripts/arc-payout.mjs` is written and
-reviewed, and it is scheduled — `file_claim` needs the event window to be over
-while the claim grace is still open, a narrow window. Until it runs, on this
-deployment:
+The payout arc ran on 9th September 2026. The adversarial property this
+document cares about was exercised for real, not simulated: **the insurer
+appealed a determination it disliked and paid a bond to add a source that
+contradicted it.** The weather provider read 149 km/h against a 150 threshold.
+The count went from 2 of 2 to 2 of 3, the majority held, and the bond was
+forfeited to the policyholder. Attacking the record with true-but-adverse
+evidence cost the attacker and changed nothing.
 
-- no payout has been made;
-- no appeal has been filed;
-- no bond has been returned or forfeited;
-- no settlement has occurred.
+Also shown: settlement moved the whole coverage with no split, and one
+`claim()` withdrew coverage and forfeited bond together, leaving `escrow_atto`
+at zero. Transactions are listed in `docs/DEPLOYMENT.md`.
 
-Everything this document says about `settle`, `appeal`, `re_investigate` and
-`lapse_appeal` is what the contract **does** — pinned by the direct suite and
-the mutation sweep, and deployed byte-for-byte at the address in section 1.
-None of it is a claim about a transaction that has happened.
+Still not demonstrated on chain, and named rather than elided:
+
+- `lapse_appeal` — an appeal abandoned rather than heard, and the snapshot
+  restored verbatim (S29). Pinned by the direct suite only.
+- A NOT_SATISFIED settlement and an expiry reclaim.
+- An UNDETERMINED hold that is refiled and then carries.
+- Two refusals were demonstrated without attribution: re-running `settle` on a
+  PAID policy and `claim` on an empty balance were both refused, but the node
+  returned a bare RPC error rather than the contract's sentence, so that run
+  does not prove which rule refused them.
+
+Everything above about those remaining paths is what the contract **does** —
+pinned by the direct suite and the mutation sweep, deployed byte-for-byte at
+the address in section 1 — not a claim about a transaction that has happened.
 
 What **has** run against the deployment, with transcripts in `web/`: a draft
 taking its full coverage into custody and a cancellation returning it through

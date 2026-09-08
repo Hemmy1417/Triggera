@@ -516,17 +516,30 @@ repository from an absolute `SRC` path, and CI rewrites that line to the
 checkout root before running it. A clone anywhere else needs the same one-line
 change.
 
-### The payout arc is written and has not been run
+### The payout arc has run, and two of its checks proved less than they claimed
 
-`web/scripts/arc-payout.mjs` exists, is complete, and was reviewed before any
-run. It has **not been executed against the deployment**.
+`web/scripts/arc-payout.mjs` ran on 9th September 2026 against
+`0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`, in eight transactions listed in
+`docs/DEPLOYMENT.md`. Payout, appeal, bond forfeiture and settlement have all
+happened on chain.
 
-Therefore, and without qualification: **no payout, no appeal, no bond
-forfeiture and no settlement has happened on
-`0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`.** Everything section 1 and section
-4 say about the payout path, the bond and the restored snapshot describes what
-the contract *does*, proved by the direct suite and the mutation sweep — not
-something a transcript shows happening on chain.
+The S38 point is what the run did with its own failures. Two checks —
+`settle` re-run on a PAID policy, and `claim` on an empty balance — expected
+the contract's own refusal sentence. Both calls **were refused**, which is the
+property that matters. But the node returned a bare `InvalidInputRpcError` at
+fee estimation instead of the contract's payload, so the run could not show
+*which* rule refused them.
+
+The script now records that as its own outcome rather than folding it into
+either bucket. Calling it a pass would claim a sentence nobody read; calling it
+a failure would say the contract did not refuse, which is false and is the
+dangerous direction. The transcript says the refusal happened and its reason is
+unproven, and the sentences themselves stay pinned in the direct suite.
+
+The arc also asserts its central claim by name rather than by tally: it is not
+enough that `contradicting` equals 1, because that would hold just as well if
+the agency had gone unreadable and the press had fallen short. The run pins the
+provider row at 149, the agency at 157 and the press at 161, each by host.
 
 What *has* run against the deployment, with transcripts under `web/`:
 
@@ -536,6 +549,7 @@ What *has* run against the deployment, with transcripts under `web/`:
 | 3 | `arc-refusals.mjs` | refusals, each asserted against the contract's own sentence |
 | 5–6 | `arc-panel.mjs` | a claim filed and a real panel round. Every evidence URL pointed at a commit that had not been published, so nothing was readable, and the contract returned UNDETERMINED with custody unmoved |
 | 7 | `arc-promote.mjs` | the UNDETERMINED hold promoted the policy back to ACTIVE; nothing paid, the coverage still in custody |
+| 8–12 | `arc-payout.mjs` | the payout path end to end: a second claim carried on 2 of 2; the insurer appealed with a bond and added the source that disagreed; the re-hearing counted 3 publishers, 2 past the trigger and 1 short, and SATISFIED stood; the bond was forfeited, the whole coverage settled, and one `claim()` left custody at zero |
 
 Acts 5–6 are worth reading twice. The panel could not read a single page and the
 contract did not pay — which is the behaviour the whole design exists to

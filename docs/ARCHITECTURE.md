@@ -621,19 +621,39 @@ Acts 5–6 are the design working, not a failed run. When the panel cannot read,
 it does not pay — and it says so in an outcome that is first-class rather than
 an error.
 
-### Not yet demonstrated on chain
+### Demonstrated on chain
 
-**The payout arc has not run.** `web/scripts/arc-payout.mjs` is written and
-adversarially reviewed, and it is scheduled — `file_claim` needs the event
-window to be over while the claim grace is still open, a narrow window. Until
-it runs:
+The payout arc ran on 9th September 2026 against `trg-000001`, in eight
+transactions. `settle`, `appeal`, `re_investigate` and the pull-payment `claim`
+are no longer only what the contract *does* in the direct suite: they are
+transactions with hashes.
 
-- no payout has been made on chain;
-- no appeal has been filed on chain;
-- no bond has been forfeited or returned on chain;
-- no settlement has occurred on chain.
+| act | call | transaction |
+|---|---|---|
+| 8 | `file_claim` (v2) | `0xbc152aeb9606a7a8ec9b564a8c3486d6c1545c0d7393d5bbc23a4c02bcdd3619` |
+| 9 | `investigate` | `0x6b675da1ea04116fbf1d4d85be7da485bbd359a413c702efdda2bd31cbf02137` |
+| 9 | `promote` | `0xf864697454dbe00e30e1c543102654e67b59d2ec9bac837ec146c02e16e8e6ab` |
+| 10 | `appeal` (0.05 GEN bond) | `0xa6b9ccdff6eb6f02dfd199a0879f15ade37eca8869556d63ea6037c21095b738` |
+| 10 | `re_investigate` | `0x6e7f2ec6a8d998259cd53fa4213d37adff64acc1b9880df1fc98df63de0831ef` |
+| 10 | `promote` (second) | `0x684d4ac6a1bd1187fdc927309a8d027f90b5808d2e55ca0462c8c24379b14c39` |
+| 11 | `settle` | `0x6e7baafb6036bdf13501644d63a7aa9b46ab2b40b402f5dde37135a8aeec5abf` |
+| 12 | `claim` | `0x774703402fae77f5c65833b8980b330260110120cdfb825bdc0c8598a796ef20` |
 
-Everything sections 3 through 8 describe about `settle`, `appeal`,
-`re_investigate` and `lapse_appeal` is what the contract **does** — pinned by
-the direct suite and the mutation sweep, and deployed byte-for-byte at the
-address above. None of it is a claim about a transaction that has happened.
+The derivation each round turned on, read from `get_decision`:
+
+| round | publishers | qualifying | contradicting | outcome |
+|---|---|---|---|---|
+| v2, the claim | 2 | 2 | 0 | SATISFIED |
+| v3, the re-hearing | 3 | 2 | **1** | **SATISFIED** |
+
+The readings are named, not merely counted: the agency at 157 km/h and the
+press at 161 both past the 150 threshold, and the weather provider — the row
+the *insurer* added — at 149, short of it. Adding a source that disagreed moved
+the count from 2 of 2 to 2 of 3 and did not flip the majority, so the appeal
+failed and its bond went to the policyholder. Final state on chain:
+`paid_atto` 100000000000000000, `escrow_atto` 0, `satisfied` 1, `active` 0.
+
+What remains undemonstrated is narrower: the `lapse_appeal` path (an appeal
+abandoned rather than heard) and the NOT_SATISFIED and UNDETERMINED-then-
+refiled scenarios in `evidence/`. Those are pinned by the direct suite and the
+mutation sweep only.
