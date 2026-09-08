@@ -74,7 +74,7 @@ function revertText(err) {
       try {
         const b = Array.isArray(res) ? Buffer.from(res) : Buffer.from(String(res), 'base64');
         seen.push(b.subarray(1).toString('utf-8'));
-      } catch (e) { /* keep going */ }
+      } catch { /* keep going */ }
     }
     node = node.cause ?? node.data ?? null;
   }
@@ -85,12 +85,12 @@ async function waitFinal(hash, label, maxTicks = 200) {
   for (let i = 0; i < maxTicks; i++) {
     await sleep(4000);
     let t;
-    try { t = (await rpc('eth_getTransactionByHash', [hash])).result; } catch (e) { continue; }
+    try { t = (await rpc('eth_getTransactionByHash', [hash])).result; } catch { continue; }
     const st = t?.status ?? t?.statusName;
     if (st === 'FINALIZED') {
       const l = leaderOf(t);
       let p = l?.result?.payload ?? '';
-      if (Array.isArray(p)) { try { p = Buffer.from(p).toString('utf-8'); } catch (e) { /* keep */ } }
+      if (Array.isArray(p)) { try { p = Buffer.from(p).toString('utf-8'); } catch { /* keep */ } }
       say('   ' + label + ': FINALIZED ' + t.result_name + ' leader=' + l?.execution_result);
       return { ok: l?.execution_result === 'SUCCESS', text: String(p ?? ''), tx: t };
     }

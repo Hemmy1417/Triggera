@@ -22,6 +22,7 @@ other way round.
 | **Explorer** | [`/address/0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`](https://explorer-studio-dev.genlayer.com/address/0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42) |
 | **Runner** | `py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng` |
 | **Source** | `contracts/triggera.py`, class `Triggera` |
+| **App** | https://triggera.vercel.app (root directory `web`) |
 | **Signing key** | `web/scripts/deploy.mjs` signs with the `CREATOR` key in `web/.data/keys.json` (gitignored, not in the repository) |
 
 The explorer serves `/address/<addr>` and `/tx/<hash>`; both are also the

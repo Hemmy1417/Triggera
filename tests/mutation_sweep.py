@@ -65,7 +65,6 @@ MUTATIONS = [
     ("CONTROL (no mutation - must PASS)", None, None),
 
     # -- guards, derived from the source: each disables one refusal --------
-
     ('_require_clock: now == 0',
      '        if now == 0:',
      '        if False:'),
@@ -362,8 +361,6 @@ MUTATIONS = [
      '        if raw_package is None:',
      '        if False:'),
 
-
-
     ('judge: not (0 <= reading <= MAX_READING)',
      '                    if not (0 <= reading <= MAX_READING):',
      '                    if False:'),
@@ -379,7 +376,6 @@ MUTATIONS = [
     ('validator_fn: not isinstance(out, dict)',
      '        if not isinstance(out, dict):',
      '        if False:'),
-
 
     # -- the arithmetic that decides outcomes and money -------------------
 

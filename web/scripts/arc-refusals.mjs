@@ -45,14 +45,14 @@ function revertText(err) {
     seen.add(node);
     for (const k of Object.getOwnPropertyNames(node)) {
       let v;
-      try { v = node[k]; } catch (e) { continue; }
+      try { v = node[k]; } catch { continue; }
       if (typeof v === 'string') {
         out.push(v);
         if (/^[A-Za-z0-9+/=]{12,}$/.test(v)) {
           try {
             const s = Buffer.from(v, 'base64').toString('utf-8');
             if (/\[EXPECTED\]|\[TRANSIENT\]|\[LLM\]/.test(s)) out.push(s.replace(/^[\x00-\x1f]+/, ''));
-          } catch (e) { /* not base64 */ }
+          } catch { /* not base64 */ }
         }
       } else if (v && typeof v === 'object') walk(v, depth + 1);
     }

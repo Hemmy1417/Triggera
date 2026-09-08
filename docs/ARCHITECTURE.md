@@ -595,10 +595,10 @@ a superseded address appearing as a default in the env example or the CI
 workflow. This is S37 made checkable — a reviewer who clones the repo gets the
 deployment that was judged.
 
-**It fails today**, for one reason: `README.md` and `docs/DEPLOYMENT.md` do not
-exist yet. Writing them with
-`0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` is what makes it pass. This
-document is not one of the surfaces it reads.
+**It passes at HEAD.** It failed until `README.md` and
+`docs/DEPLOYMENT.md` existed, because nothing anchored the address -- which
+is the point of the check: the documents are not commentary beside the code,
+they are one of the four surfaces that must agree.
 
 ---
 

@@ -46,8 +46,8 @@ function payload(t) {
   const arr = t?.consensus_data?.leader_receipt ?? [];
   const leader = arr.find((x) => x?.mode !== 'validator') ?? arr[0];
   let p = leader?.result?.payload ?? leader?.genvm_result?.stdout ?? '';
-  if (Array.isArray(p)) { try { p = Buffer.from(p).toString('utf-8'); } catch (e) { /* keep */ } }
-  if (typeof p === 'object' && p) { try { p = JSON.stringify(p); } catch (e) { /* keep */ } }
+  if (Array.isArray(p)) { try { p = Buffer.from(p).toString('utf-8'); } catch { /* keep */ } }
+  if (typeof p === 'object' && p) { try { p = JSON.stringify(p); } catch { /* keep */ } }
   return { exec: leader?.execution_result, text: String(p ?? '') };
 }
 
@@ -55,7 +55,7 @@ async function waitFinal(hash, label) {
   for (let i = 0; i < 120; i++) {
     await sleep(4000);
     let t;
-    try { t = (await rpc('eth_getTransactionByHash', [hash])).result; } catch (e) { continue; }
+    try { t = (await rpc('eth_getTransactionByHash', [hash])).result; } catch { continue; }
     const st = t?.status ?? t?.statusName;
     if (st === 'FINALIZED') {
       const { exec, text } = payload(t);

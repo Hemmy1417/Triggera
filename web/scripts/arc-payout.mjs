@@ -107,12 +107,12 @@ function revertText(err) {
           try {
             const s = Buffer.from(v, 'base64').toString('utf-8');
             if (/[ -~]{8,}/.test(s)) out.push(s.replace(/^[\x00-\x1f]+/, ''));
-          } catch (e) { /* not base64 */ }
+          } catch { /* not base64 */ }
         }
         out.push(v);
       } else if (Array.isArray(v)) {
         if (v.length && v.every((x) => typeof x === 'number')) {
-          try { out.push(Buffer.from(v).toString('utf-8')); } catch (e) { /* keep */ }
+          try { out.push(Buffer.from(v).toString('utf-8')); } catch { /* keep */ }
         } else v.forEach((c) => walk(c, d + 1));
       } else if (v && typeof v === 'object') walk(v, d + 1);
     }
@@ -153,13 +153,13 @@ async function send(role, fn, args, value = 0n, maxTicks = 200) {
   for (let i = 0; i < maxTicks; i++) {
     await sleep(4000);
     let t;
-    try { t = (await rpc('eth_getTransactionByHash', [hash])).result; } catch (e) { continue; }
+    try { t = (await rpc('eth_getTransactionByHash', [hash])).result; } catch { continue; }
     const st = t?.status ?? t?.statusName;
     if (st === 'FINALIZED') {
       const arr = t.consensus_data?.leader_receipt ?? [];
       const l = arr.find((x) => x?.mode !== 'validator') ?? arr[0];
       let p = l?.result?.payload ?? '';
-      if (Array.isArray(p)) { try { p = Buffer.from(p).toString('utf-8'); } catch (e) { /* keep */ } }
+      if (Array.isArray(p)) { try { p = Buffer.from(p).toString('utf-8'); } catch { /* keep */ } }
       say('   ' + fn + ': FINALIZED ' + t.result_name + ' leader=' + l?.execution_result);
       return { ok: l?.execution_result === 'SUCCESS', hash, text: String(p ?? '') };
     }

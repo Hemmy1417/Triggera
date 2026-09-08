@@ -130,7 +130,7 @@ Every atto that enters the contract leaves through `claim()` and nowhere else.
 resolves; every non-terminal state needs a defined transition out, callable by
 someone who exists.
 
-**Here:** every non-terminal state has a permissionless exit on a wall-clock
+**Here:** every state past `DRAFT` has a permissionless exit on a wall-clock
 deadline. `promote` after the finality window, `settle` after the appeal window,
 `lapse_appeal` after `STALE_APPEAL_SECONDS`, `expire` after the coverage period
 and its claim grace (with one finality window of patience for a claim nobody
@@ -203,8 +203,8 @@ a filer supplies only a URL and a label.
 `::test_min_independent_cannot_exceed_the_distinct_independent_publishers`,
 `::test_basis_without_an_independent_origin_is_refused`;
 `tests/direct/test_investigation.py::test_stacking_pages_from_one_publisher_cannot_make_a_second_voice`,
-`::test_two_pages_on_one_publisher_speak_with_the_least_favourable_reading`,
-`::test_derivation_never_averages_and_one_publisher_speaks_once`;
+`::test_two_pages_on_one_publisher_speak_with_the_least_favourable_reading`;
+`tests/direct/test_smoke.py::test_derivation_never_averages_and_one_publisher_speaks_once`;
 `tests/direct/test_appeal.py::test_a_second_page_from_one_publisher_is_still_one_voice_on_appeal`;
 sweep entries `_clean_basis: origin in seen`,
 `_clean_basis: min_independent > len(independent_domains)`,
@@ -502,9 +502,9 @@ The cost of "unique" is that a guard whose exact source line repeats is not in
 the list. `if p.appeal_open == "yes":` occurs six times — in `file_claim`,
 `investigate`, `promote`, `appeal`, `settle` and `expire` — so no mutant
 disables it; it is pinned by the direct suite instead
-(`test_settle_refused_while_an_appeal_is_open_however_late`,
-`test_expire_refuses_while_an_appeal_is_open`,
-`test_investigate_refuses_while_an_appeal_is_open`). Multi-line conditions and
+(`tests/direct/test_settlement.py::test_settle_refused_while_an_appeal_is_open_however_late`,
+`tests/direct/test_settlement.py::test_expire_refuses_while_an_appeal_is_open`,
+`tests/direct/test_investigation.py::test_investigate_refuses_while_an_appeal_is_open`). Multi-line conditions and
 guards that raise more than two lines away are likewise out of the generator's
 reach. Rules expressed as arithmetic have no `if`/`raise` shape at all, so five
 mutants are written by hand for the ones that decide money and outcomes: the

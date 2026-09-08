@@ -39,17 +39,33 @@ if (cmd === "verify") {
   const raw = typeof r.result === "string" ? r.result : (r.result?.code ?? "");
   const live = raw.startsWith("# ") ? raw : Buffer.from(raw, "base64").toString("utf-8");
   const repo = readFileSync(SOURCE, "utf-8");
-  console.log(`live  sha256 ${sha(live)}  (${live.length} chars)`);
-  console.log(`repo  sha256 ${sha(repo)}  (${repo.length} chars)`);
-  if (live !== repo) {
-    const a = live.split("\n"), b = repo.split("\n");
+  /* LINE ENDINGS ARE NORMALIZED BEFORE COMPARING, and both digests printed.
+   *
+   * The contract was deployed from a working tree that still carried CRLF, so
+   * the chain stores the CRLF form. `.gitattributes` declares `*.py text
+   * eol=lf`, so every CLONE checks out LF. A raw text comparison therefore
+   * passed on the deploying machine and would have FAILED for anyone else --
+   * the exact opposite of what this check exists to prove. The two differ only
+   * in line endings; the normalized digest is the one that must match from any
+   * checkout, and it is printed so nothing is taken on trust. */
+  const norm = (t) => t.replace(/\r\n/g, "\n");
+  const eol = (t) => (norm(t) === t ? "LF" : "CRLF");
+  console.log(`live  sha256 ${sha(live)}  (${live.length} chars, ${eol(live)})`);
+  console.log(`repo  sha256 ${sha(repo)}  (${repo.length} chars, ${eol(repo)})`);
+  console.log(`live  sha256 ${sha(norm(live))}  normalized to LF`);
+  console.log(`repo  sha256 ${sha(norm(repo))}  normalized to LF`);
+  if (norm(live) !== norm(repo)) {
+    const a = norm(live).split("\n"), b = norm(repo).split("\n");
     for (let i = 0; i < Math.max(a.length, b.length); i++) {
       if (a[i] !== b[i]) { console.log(`first difference at line ${i + 1}\n  live: ${a[i]}\n  repo: ${b[i]}`); break; }
     }
     console.error("verify: the deployed source does NOT match contracts/triggera.py");
     process.exit(1);
   }
-  console.log("verify: byte-for-byte identical");
+  console.log(live === repo
+    ? "verify: byte-for-byte identical"
+    : "verify: identical after normalizing line endings — the chain holds the "
+      + "CRLF form, a clone holds LF, and nothing but the line endings differs");
 } else {
   const KEYS = JSON.parse(readFileSync(new URL("../.data/keys.json", import.meta.url), "utf-8"));
   const account = createAccount(KEYS.CREATOR.pk);

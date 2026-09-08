@@ -77,12 +77,12 @@ function revertText(err) {
           try {
             const s = Buffer.from(v, 'base64').toString('utf-8');
             if (/[ -~]{8,}/.test(s)) out.push(s.replace(/^[\x00-\x1f]+/, ''));
-          } catch (e) { /* not base64 */ }
+          } catch { /* not base64 */ }
         }
         out.push(v);
       } else if (Array.isArray(v)) {
         if (v.length && v.every((x) => typeof x === 'number')) {
-          try { out.push(Buffer.from(v).toString('utf-8')); } catch (e) { /* keep */ }
+          try { out.push(Buffer.from(v).toString('utf-8')); } catch { /* keep */ }
         } else v.forEach((c) => walk(c, d + 1));
       } else if (v && typeof v === 'object') walk(v, d + 1);
     }
@@ -108,7 +108,7 @@ async function send(role, fn, args, value = 0n) {
   for (let i = 0; i < 200; i++) {
     await sleep(4000);
     let t;
-    try { t = (await rpc('eth_getTransactionByHash', [hash])).result; } catch (e) { continue; }
+    try { t = (await rpc('eth_getTransactionByHash', [hash])).result; } catch { continue; }
     const st = t?.status ?? t?.statusName;
     if (st === 'FINALIZED') {
       const arr = t.consensus_data?.leader_receipt ?? [];

@@ -24,11 +24,15 @@ window and an appeal window, through a pull-payment ledger.
 | **Runner** | `py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng` |
 | **Explorer** | [`/address/0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`](https://explorer-studio-dev.genlayer.com/address/0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42) |
 | **Source** | `contracts/triggera.py`, class `Triggera` |
+| **App** | [triggera.vercel.app](https://triggera.vercel.app) |
 
 The deployed bytes are the bytes in this checkout. `gen_getContractCode` for
 that address returns 100,199 bytes, sha256
 `18eaa323a0d3d156405e8584872a19aa5dc9476e55c9fd4f7a79e2bb9b371786`, identical to
-`contracts/triggera.py`:
+`contracts/triggera.py`. The deployment carries CRLF endings and `.gitattributes`
+checks the file out as LF, so a clone holds the same source at sha256
+`b7a67dba…9b3c4cc0`; the command normalizes both and prints each digest, and
+[DEPLOYMENT.md](docs/DEPLOYMENT.md) sets out why there are two:
 
 ```bash
 node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42
@@ -88,7 +92,7 @@ node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42
    claim()   the only external value path: the contract credits, a party pulls
 ```
 
-Every non-terminal state has a permissionless exit. Nothing is hostage to a
+Every state past `DRAFT` has a permissionless exit. Nothing is hostage to a
 party or to the model.
 
 ### How the outcome is derived
@@ -130,7 +134,7 @@ Three properties, stated plainly because they are the point:
 | Web suite | 59 tests pass | `cd web && npm test` |
 | Types | clean | `cd web && npm run typecheck` |
 | Web lint | clean | `cd web && npx eslint .` |
-| Deployed bytes | 100,199 bytes, sha256 `18eaa323…b371786`, identical to the checkout | `node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` |
+| Deployed bytes | sha256 `18eaa323…b371786` (100,199 bytes, CRLF) — the same source a clone checks out as LF, sha256 `b7a67dba…9b3c4cc0`. The command normalizes line endings and prints both, so it holds from any checkout; [DEPLOYMENT.md](docs/DEPLOYMENT.md) carries the reasoning | `node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` |
 | Surfaces agree | checks that all four surfaces naming the contract name one address | `cd web && npm run verify` |
 | CI | both jobs green at `2650cfd` | `.github/workflows/tests.yml` |
 
