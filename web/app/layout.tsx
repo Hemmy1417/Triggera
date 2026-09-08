@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Shell } from "./components/Shell";
 import { WalletProvider } from "../lib/wallet";
 import "./globals.css";
@@ -18,13 +18,6 @@ const mono = JetBrains_Mono({
   weight: ["400"],
   display: "swap",
 });
-const display = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["400"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "Triggera — parametric insurance verification",
   description:
@@ -33,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} ${display.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>
         <WalletProvider>
           <Shell>{children}</Shell>
