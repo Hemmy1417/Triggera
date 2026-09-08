@@ -1,5 +1,5 @@
 /**
- * Deploy `contracts/verda.py` to GenLayer Studio Next and verify the bytes.
+ * Deploy `contracts/triggera.py` to GenLayer Studio Next and verify the bytes.
  *
  *   node web/scripts/deploy.mjs            deploy, wait for finality, print the address
  *   node web/scripts/deploy.mjs verify 0x… fetch the deployed source and diff it byte-for-byte
@@ -16,14 +16,14 @@ import { createHash } from "node:crypto";
 
 const RPC = process.env.NEXT_PUBLIC_GENLAYER_RPC_URL ?? "https://studio-next.genlayer.com/api";
 const chain = { ...studioDevnet, name: "GenLayer Studio Next", rpcUrls: { default: { http: [RPC] } } };
-const SOURCE = fileURLToPath(new URL("../../contracts/verda.py", import.meta.url));
+const SOURCE = fileURLToPath(new URL("../../contracts/triggera.py", import.meta.url));
 const FEE_FLOOR = 10n ** 15n;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function rpc(method, params) {
   const res = await fetch(RPC, {
     method: "POST",
-    headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0 verda-deploy" },
+    headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0 triggera-deploy" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
   return res.json();
@@ -46,7 +46,7 @@ if (cmd === "verify") {
     for (let i = 0; i < Math.max(a.length, b.length); i++) {
       if (a[i] !== b[i]) { console.log(`first difference at line ${i + 1}\n  live: ${a[i]}\n  repo: ${b[i]}`); break; }
     }
-    console.error("verify: the deployed source does NOT match contracts/verda.py");
+    console.error("verify: the deployed source does NOT match contracts/triggera.py");
     process.exit(1);
   }
   console.log("verify: byte-for-byte identical");
@@ -55,8 +55,8 @@ if (cmd === "verify") {
   const account = createAccount(KEYS.CREATOR.pk);
   const client = createClient({ chain, account });
   const code = readFileSync(SOURCE, "utf-8");
-  if (code.includes("\r")) throw new Error("contracts/verda.py carries CR bytes — normalize to LF before deploying");
-  console.log(`deploying contracts/verda.py (sha256 ${sha(code)}) as ${account.address} on chain ${chain.id}`);
+  if (code.includes("\r")) throw new Error("contracts/triggera.py carries CR bytes — normalize to LF before deploying");
+  console.log(`deploying contracts/triggera.py (sha256 ${sha(code)}) as ${account.address} on chain ${chain.id}`);
   const est = await client.estimateTransactionFees();
   const feeValue = est.feeValue > FEE_FLOOR ? est.feeValue : FEE_FLOOR;
   const hash = await client.deployContract({ code, args: [], fees: { distribution: est.distribution, feeValue } });

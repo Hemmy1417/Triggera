@@ -10,3 +10,4 @@ web/arc*.transcript.json
 tests/work/
 artifacts/
 tsconfig.tsbuildinfo
+web/arc*.log

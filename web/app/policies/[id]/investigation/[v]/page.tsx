@@ -545,19 +545,37 @@ export default function InvestigationPage({
                   </span>
                 </div>
 
-                <ul className="checks">
-                  <li className={r.window_ok ? undefined : "flag"}>
-                    {r.window_ok ? "within the agreed window" : "outside the agreed window"}
-                  </li>
-                  <li className={r.geo_ok ? undefined : "flag"}>
-                    {r.geo_ok ? "inside the insured area" : "outside the insured area"}
-                  </li>
-                  <li className={r.kind_matches ? undefined : "flag"}>
-                    {r.kind_matches
-                      ? "what its agreed label says"
-                      : "not what its agreed label says"}
-                  </li>
-                </ul>
+                {/* The three checks are the panel's findings ABOUT a page it
+                    read. A page that could not be read was never assessed, so
+                    the booleans that come back for it are defaults, not
+                    findings — the contract itself takes this line, forcing
+                    `reading = None` for an unreadable row on the grounds that
+                    "an unreadable page states nothing, whatever the model says
+                    about it". Rendering them anyway put three specific
+                    accusations against a page that merely 404'd: that it was
+                    outside the window, outside the insured area, and not what
+                    its label said. None of that was determined. */}
+                {r.readable ? (
+                  <ul className="checks">
+                    <li className={r.window_ok ? undefined : "flag"}>
+                      {r.window_ok ? "within the agreed window" : "outside the agreed window"}
+                    </li>
+                    <li className={r.geo_ok ? undefined : "flag"}>
+                      {r.geo_ok ? "inside the insured area" : "outside the insured area"}
+                    </li>
+                    <li className={r.kind_matches ? undefined : "flag"}>
+                      {r.kind_matches
+                        ? "what its agreed label says"
+                        : "not what its agreed label says"}
+                    </li>
+                  </ul>
+                ) : (
+                  <p className="body-sm muted" style={{ marginTop: 10 }}>
+                    Nothing was assessed about this page: it did not come back, so the
+                    panel had no content to judge its window, its area or its kind
+                    against.
+                  </p>
+                )}
 
                 {r.excerpt ? (
                   <details className="technical">
