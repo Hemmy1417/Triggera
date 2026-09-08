@@ -235,7 +235,7 @@ img, svg { max-width: 100%; }
 main.page {
   max-width: var(--measure);
   margin: 0 auto;
-  padding: 48px var(--pad-x) 140px;
+  padding: 48px var(--pad-x) 96px;
 }
 /* the default distance between a page's movements */
 .page > * + * { margin-top: var(--gap-major); }
@@ -302,6 +302,9 @@ main.page {
   transition: color 150ms ease-out;
 }
 .ghost:hover { color: var(--white); }
+/* Inline in prose, a link is part of the sentence and takes the sentence's
+   size — .ghost's own 14px is for standalone links only. */
+.body .ghost, .body-sm .ghost, p .ghost { font-size: inherit; }
 
 .announce {
   display: inline-flex;
@@ -627,7 +630,10 @@ table.rows tr.rowlink td:last-child { border-top-right-radius: 12px; border-bott
 
 /* grids */
 
-.grid { display: grid; gap: var(--gap-air); }
+/* Grid children size to their own content. Stretching them to the tallest
+   sibling leaves a dead void under the shorter card, which is the single
+   most visible flaw on a two-column page. */
+.grid { display: grid; gap: var(--gap-air); align-items: start; }
 .grid > * { min-width: 0; }
 .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1410,9 +1416,13 @@ main.page.detail { padding-top: 32px; }
   font-family: var(--sans);
   font-size: var(--t-micro);
   color: var(--bone);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* The place is the whole point of this chip, so it wraps rather than
+     truncating. Ellipsis in a 230px plot turned "Eastern Samar, Philippines
+     · 50 km" into "Eastern Samar, Philippines · 5…", hiding the radius --
+     a caption that cuts off the fact it exists to state. */
+  white-space: normal;
+  text-wrap: balance;
+  line-height: 1.35;
   text-align: center;
 }
 

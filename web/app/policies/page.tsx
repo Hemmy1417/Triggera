@@ -26,7 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatGen } from "../../lib/config";
 import { getPolicies, type Policy } from "../../lib/read";
 import { StateNote, Status } from "../components/bits";
-import { triggerSentence } from "../components/PolicyRow";
+import { triggerSentence } from "../components/trigger";
 
 type Load<T> = { state: "loading" } | { state: "ok"; data: T } | { state: "down"; why: string };
 

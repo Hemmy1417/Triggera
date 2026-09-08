@@ -613,9 +613,13 @@ export default function Compose() {
         </span>
         <span className="metric">
           <span className="metric-label">Publishers that must agree</span>
+          {/* "1 of 0" is not a requirement, it is an impossibility — and it
+              is what an untouched form said before any origin was named. Until
+              there are publishers to count against, the requirement stands on
+              its own. */}
           <span className="metric-value">
             {minIndependent}
-            <span className="unit">of {publishers.size}</span>
+            {publishers.size > 0 ? <span className="unit">of {publishers.size}</span> : null}
           </span>
         </span>
         <span className="metric">

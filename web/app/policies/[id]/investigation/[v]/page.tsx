@@ -43,7 +43,7 @@ import {
 } from "../../../../../lib/read";
 import { useNow } from "../../../../../lib/useNow";
 import { Dot, Ident, StateNote, Status, Technical } from "../../../../components/bits";
-import { triggerSentence } from "../../../../components/PolicyRow";
+import { triggerSentence } from "../../../../components/trigger";
 import { ThresholdScale, type ScaleNode } from "../../../../components/ThresholdScale";
 
 type Load<T> = { state: "loading" } | { state: "ok"; data: T } | { state: "down"; why: string };
