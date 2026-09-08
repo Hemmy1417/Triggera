@@ -6,8 +6,11 @@
    button. Status hues carry the determination and nothing else. */
 
 :root {
-  --void: #000000;
-  --hairline: #292d30;
+  --void: #07080a;          /* the canvas: near-black, not absolute */
+  --surface: #0e1013;       /* a raised card reads as raised */
+  --surface-2: #14171b;     /* a card on a card, and the row hover */
+  --hairline: #1e2126;
+  --hairline-lit: #2b3037;  /* a border that has to be seen */
   --white: #ffffff;
   --bone: #f0f0f0;
   --ash: #a1a4a5;
@@ -173,9 +176,9 @@ main.page {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 17px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-control);
+  padding: 10px 20px;
+  border: 1px solid var(--hairline-lit);
+  border-radius: 9999px;
   background: transparent;
   color: var(--white);
   font-size: 14px;
@@ -183,7 +186,17 @@ main.page {
   white-space: nowrap;
   transition: border-color 150ms ease-out, color 150ms ease-out;
 }
-.pill:hover { border-color: var(--white); }
+.pill:hover { border-color: var(--white); background: var(--surface-2); }
+
+/* The one action a view is FOR. Exactly one per screen. */
+.pill.primary {
+  background: var(--iris);
+  border-color: var(--iris);
+  color: #0a0713;
+  font-weight: 500;
+}
+.pill.primary:hover { background: var(--iris-glow); border-color: var(--iris-glow); }
+.pill.primary:disabled { background: var(--surface-2); border-color: var(--hairline); color: var(--iron); }
 .pill:disabled { color: var(--iron); border-color: var(--hairline); cursor: not-allowed; }
 .pill.quiet { color: var(--ash); }
 .pill.quiet:hover { color: var(--white); border-color: var(--smoke); }
@@ -217,17 +230,17 @@ main.page {
 /* surfaces: a border, never a shadow */
 
 .card {
-  background: var(--void);
+  background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--r-card);
-  padding: 32px;
+  border-radius: 20px;
+  padding: 28px;
   min-width: 0;
 }
 .card.tight { padding: 24px; }
 
 /* the decision record reads as a terminal window */
 .window {
-  background: var(--void);
+  background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--r-card);
   overflow: hidden;
@@ -780,4 +793,216 @@ main.page.detail { padding-top: 32px; }
 
 @media (max-width: 620px) {
   .detail-verdict { align-items: flex-start; text-align: left; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE THRESHOLD SCALE — the product in one picture.
+
+   A horizontal axis of readings with the agreed threshold drawn across it.
+   Each publisher is a node placed at its reading; nodes past the threshold
+   are green, nodes short of it red, and a party's own source is hollow
+   because it never counts. Anyone can see the determination before reading
+   a word of it: count the green nodes on the paying side of the line.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.scale-caption {
+  font-size: 13px;
+  color: var(--ash);
+  margin-top: 20px;
+}
+.scale {
+  position: relative;
+  padding: 76px 0 76px;
+  margin-top: 4px;
+}
+/* the axis */
+.scale-axis {
+  position: relative;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    var(--hairline) 0%,
+    var(--hairline-lit) 50%,
+    var(--hairline) 100%
+  );
+  border-radius: 2px;
+}
+/* the agreed threshold: the only vertical line on the page */
+.scale-threshold {
+  position: absolute;
+  top: -62px;
+  bottom: -62px;
+  width: 1px;
+  background: var(--white);
+  opacity: 0.55;
+}
+.scale-threshold::after {
+  content: attr(data-label);
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bone);
+  white-space: nowrap;
+}
+/* the side the trigger pays on, washed the faintest green */
+.scale-pays {
+  position: absolute;
+  top: -14px;
+  bottom: -16px;
+  background: linear-gradient(to right, rgba(58, 211, 137, 0.09), rgba(58, 211, 137, 0.02));
+  border-radius: 3px;
+  pointer-events: none;
+}
+.scale-node {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--void);
+  background: var(--ash);
+}
+.scale-node.qualifying { background: var(--green); }
+.scale-node.contradicting { background: var(--red); }
+/* a party's own instrument: present, visibly not counted */
+.scale-node.party {
+  background: transparent;
+  border: 1.5px dashed var(--iron);
+  width: 11px;
+  height: 11px;
+}
+.scale-node.unusable { background: var(--iron); opacity: 0.5; }
+/* the publisher's name and figure, alternating above and below the axis so
+   crowded readings stay legible */
+.scale-tag {
+  position: absolute;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--ash);
+}
+.scale-tag .v { display: block; color: var(--white); font-size: 13px; }
+.scale-tag .who {
+  display: block;
+  max-width: 15ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scale-tag.above { bottom: calc(50% + 18px); }
+.scale-tag.below { top: calc(50% + 18px); }
+.scale-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--iron);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE INSURED AREA — coordinates and a radius, drawn instead of spelled.
+   A target ring on a faint graticule, which is what a plotted area IS.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.area {
+  position: relative;
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: 210px;
+  border-radius: 16px;
+  border: 1px solid var(--hairline);
+  background:
+    linear-gradient(var(--hairline) 1px, transparent 1px) 0 0 / 100% 25%,
+    linear-gradient(90deg, var(--hairline) 1px, transparent 1px) 0 0 / 25% 100%,
+    var(--surface);
+  background-blend-mode: normal;
+  overflow: hidden;
+}
+.area::before {
+  /* the insured radius */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58%;
+  height: 58%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid var(--iris);
+  background: radial-gradient(circle, rgba(146, 129, 247, 0.14), transparent 70%);
+}
+.area::after {
+  /* the plotted point */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--iris);
+}
+.area-chip {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(7, 8, 10, 0.85);
+  border: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--bone);
+}
+
+/* bento: cards that are not all the same size */
+.bento { display: grid; gap: 16px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.bento > * { min-width: 0; }
+.bento .w2 { grid-column: span 2; }
+.bento .w3 { grid-column: span 3; }
+.bento .w4 { grid-column: span 4; }
+.bento .w6 { grid-column: span 6; }
+@media (max-width: 860px) {
+  .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* the wide cards keep the full row; the small ones pair up rather than
+     each taking a row of their own */
+  .bento .w3, .bento .w4, .bento .w6 { grid-column: span 2; }
+  .bento .w2 { grid-column: span 1; }
+}
+
+/* the lede: the claim, and the protocol's live state beside it */
+.lede {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
+  padding: 40px 0 64px;
+}
+.lede-claim {
+  max-width: 22ch;
+  font-size: clamp(30px, 3.6vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  font-weight: 500;
+  color: var(--white);
+}
+.lede-claim em {
+  font-style: normal;
+  color: var(--iris);
+}
+.lede-live .big-figure { margin-top: 6px; font-size: 26px; }
+.proof { padding: 32px; }
+@media (max-width: 940px) {
+  .lede { grid-template-columns: minmax(0, 1fr); gap: 36px; padding-bottom: 40px; }
 }

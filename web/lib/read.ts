@@ -31,8 +31,13 @@ function asReadError(err: unknown): ReadError {
   const e = err as { code?: unknown; message?: unknown; cause?: { code?: unknown } } | undefined;
   const text = String(e?.message ?? err ?? "read failed");
   const code = e?.code ?? e?.cause?.code;
+  const status = (err as { status?: unknown } | undefined)?.status;
   const transient =
     code === -32029 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    /50[234]|bad gateway|gateway timeout|service unavailable/i.test(text) ||
     /\[transient\]|rate limit|too many requests|fetch failed|timeout|network/i.test(text);
   return new ReadError(text, transient);
 }
@@ -51,16 +56,30 @@ async function view(fn: string, args: CalldataEncodable[], key: string, force = 
   if (!CONTRACT_CONFIGURED) throw new Error("no contract configured");
   const hit = cache.get(key);
   if (!force && hit && Date.now() - hit.at < ttl) return hit.value;
+  /* Studio Next answers a share of reads with a 502 or a dropped socket. A
+     single one of those used to blank the whole view until the reader
+     reloaded, which reported the protocol as unreachable when it was merely
+     busy. Transient failures are retried with a short backoff; a refusal
+     that is not transient still surfaces at once. */
   let raw: unknown;
-  try {
-    raw = await client.readContract({
-      address: CONTRACT_ADDRESS as `0x${string}`,
-      functionName: fn,
-      args,
-    });
-  } catch (err) {
-    throw asReadError(err);
+  let lastErr: ReadError | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      raw = await client.readContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: fn,
+        args,
+      });
+      lastErr = null;
+      break;
+    } catch (err) {
+      const e = asReadError(err);
+      if (!e.transient || attempt === 2) throw e;
+      lastErr = e;
+      await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+    }
   }
+  if (lastErr) throw lastErr;
   const value = typeof raw === "string" && raw !== "" ? JSON.parse(raw) : raw;
   cache.set(key, { at: Date.now(), value });
   return value;
