@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="12" fill="#000000"/>
-  <path d="M8 40h48" stroke="#292d30" stroke-width="2" stroke-linecap="round"/>
-  <path d="M10 50l10-4 8-6" fill="none" stroke="#a1a4a5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M28 40l8-14 8 6 10-18" fill="none" stroke="#9281f7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="28" cy="40" r="4.5" fill="#9281f7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Triggera">
+  <rect width="64" height="64" rx="13" fill="#07080a"/>
+  <rect x="8" y="9" width="44" height="13" rx="3" fill="#9281f7"/>
+  <rect x="8" y="27" width="44" height="13" rx="3" fill="#9281f7"/>
+  <rect x="8" y="45" width="15" height="13" rx="3" fill="#6e727a"/>
+  <rect x="30" y="2" width="7" height="60" rx="3" fill="#ffffff"/>
 </svg>
