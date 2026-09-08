@@ -1034,3 +1034,28 @@ def test_a_lapsed_appeal_can_be_refiled_inside_the_window(module, c):
     assert out["bond_returned"] is False
     assert c.get_claimable(INSURER) == str(PREMIUM + 2 * BOND)
     conserve(module, c)
+
+
+
+# ── the storage invariants ───────────────────────────────────────────────────
+#
+# Both guards read a row an earlier step always wrote. Unreachable through the
+# contract's own paths, so the sweep reported them unpinned; pinned here by
+# removing the row, which is the only way they can ever fire.
+
+def test_appeal_refuses_when_the_decided_package_is_gone(module, c):
+    pid = final(module, c)
+    del c.packages[f"{pid}|{policy(c, pid)['judged_version']}"]
+    as_(module, INSURER, BOND)
+    with pytest.raises(err(module), match="the decided package is missing"):
+        c.appeal(pid, GROUNDS, "", "")
+
+
+def test_re_investigate_refuses_when_the_appealed_decision_is_gone(module, c):
+    pid = appealable(module, c)
+    as_(module, INSURER, BOND)
+    c.appeal(pid, GROUNDS, "", "")
+    del c.decisions[f"{pid}|{policy(c, pid)['appealed_version']}"]
+    as_(module, STRANGER, 0)
+    with pytest.raises(err(module), match="the appealed decision record is missing"):
+        c.re_investigate(pid)

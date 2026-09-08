@@ -1422,3 +1422,21 @@ def test_promote_refuses_when_the_pending_record_is_missing(module, c):
         c.promote(pid)
     assert policy(c, pid)["status"] == "PENDING_FINALITY"
     conserve(module, c)
+
+
+
+# ── the storage invariants ───────────────────────────────────────────────────
+#
+# Three guards read a row that an earlier step always writes, so nothing the
+# contract itself does can reach them. The mutation sweep found all three
+# unpinned, which is true but not a bug: they are defences against a corrupt
+# record. They are pinned here by corrupting the record, so the defence is
+# proved to fire rather than assumed to.
+
+def test_the_panel_refuses_a_version_whose_claim_package_is_gone(module, c):
+    pid = claimed(module, c)
+    del c.packages[f"{pid}|1"]
+    panel_says(answer())
+    as_(module, STRANGER, 0)
+    with pytest.raises(err(module), match="no claim at that version"):
+        c.investigate(pid)

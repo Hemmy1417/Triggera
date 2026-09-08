@@ -548,7 +548,7 @@ def test_basis_freezes_exactly_kind_origin_and_class(module, c):
 
 # ── the commitment ───────────────────────────────────────────────────────────
 
-def commitment(module, **over):
+def commitment_fields(module, **over):
     fields = {
         "insurer": INSURER, "title": "StormGuard Property Protection",
         "notional": "USD 100,000", "event_type": "WIND",
@@ -564,7 +564,11 @@ def commitment(module, **over):
         "terms_sha256": module._sha256_hex(TERMS), "basis": BASIS,
     }
     fields.update(over)
-    return module._sha256_hex(module._canonical(fields))
+    return fields
+
+
+def commitment(module, **over):
+    return module._sha256_hex(module._canonical(commitment_fields(module, **over)))
 
 
 def test_terms_hash_is_the_canonical_commitment_over_trigger_money_period_and_basis(module, c):
@@ -574,6 +578,19 @@ def test_terms_hash_is_the_canonical_commitment_over_trigger_money_period_and_ba
     other = drafted(module, c, threshold=151, operator="gt", grace=0)
     assert policy(c, other)["terms_sha256"] == commitment(
         module, threshold=151, operator="GT", claim_grace=module.DEFAULT_CLAIM_GRACE)
+
+
+def test_the_commitment_is_serialized_key_sorted_not_in_source_order(module, c):
+    """One byte-stable serialization: the digest a party recomputes from the
+    published policy cannot depend on the order the contract happened to
+    assemble the fields in, or the commitment is only reproducible by the
+    contract's own source order."""
+    pid = drafted(module, c)
+    fields = commitment_fields(module)
+    shuffled = dict(reversed(list(fields.items())))
+    assert list(shuffled) != list(fields)
+    assert module._canonical(shuffled) == module._canonical(fields)
+    assert policy(c, pid)["terms_sha256"] == module._sha256_hex(module._canonical(shuffled))
 
 
 def test_terms_hash_commits_to_the_basis(module, c):
