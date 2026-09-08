@@ -1134,3 +1134,7 @@ main.page.detail { padding-top: 32px; }
   .timeline li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .timeline li::before { padding-top: 0; }
 }
+
+/* the landing page's closing movement: it points at the record instead of
+   being the record */
+.closer { padding: 8px 0 0; }

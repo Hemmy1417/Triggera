@@ -9,3 +9,4 @@ node_modules/
 web/arc*.transcript.json
 tests/work/
 artifacts/
+tsconfig.tsbuildinfo

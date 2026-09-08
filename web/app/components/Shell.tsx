@@ -27,6 +27,10 @@ export function explorerTx(hash: string): string {
 }
 
 const NAV: Array<{ href: string; label: string }> = [
+  /* The book is first because it is the record, and every deeper route —
+     a policy, a round of its investigation — lives under /policies, so the
+     prefix match below keeps this link lit for the whole record. */
+  { href: "/policies", label: "Policies" },
   { href: "/create", label: "Write a policy" },
   { href: "/rules", label: "How it works" },
 ];
