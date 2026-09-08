@@ -7,8 +7,18 @@
  * stubbed proxy, pinning that the SDK's Studio path issues the one method
  * the proxy forwards for it and nothing else.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { getTransactionStatus, normalizeTxView } from "@/lib/read";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { abi } from "genlayer-js";
+import {
+  getDecision,
+  getPackage,
+  getPolicy,
+  getTransactionStatus,
+  invalidateReads,
+  normalizeTxView,
+} from "@/lib/read";
+
+const { calldata } = abi;
 
 describe("normalizeTxView — what one status poll may claim", () => {
   it("a write that took effect: FINALIZED with a deciding SUCCESS receipt", () => {
@@ -139,5 +149,78 @@ describe("getTransactionStatus — one status poll through the real SDK and the 
       error: { code: -32029, message: "[transient] This page is reading the chain faster than Studio Next allows." },
     }));
     await expect(getTransactionStatus(HASH)).rejects.toMatchObject({ name: "ReadError", transient: true });
+  });
+});
+
+/**
+ * "Nothing here" is an empty string on the wire. Every one of these accessors
+ * declares a nullable document, so the empty string must never reach a caller
+ * wearing that type: a page that trusted the declaration would render the
+ * fields of a string as undefined and call it an investigation. `??` does not
+ * catch "", so this is pinned rather than assumed.
+ */
+describe("an absent document reads as null, not as an empty string", () => {
+  const ABSENT = "0x04"; // calldata for "", which is what the contract returns
+  const seen: string[] = [];
+
+  function stubAbsent() {
+    seen.length = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: unknown, opts: { body?: string } | undefined) => {
+        const body = JSON.parse(opts?.body ?? "{}") as { id?: number; method: string };
+        seen.push(body.method);
+        return new Response(
+          JSON.stringify({ jsonrpc: "2.0", id: body.id ?? 1, result: ABSENT }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  }
+
+  beforeEach(() => {
+    invalidateReads();
+    stubAbsent();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("a policy that was never written", async () => {
+    await expect(getPolicy("trg-999999")).resolves.toBeNull();
+    expect(seen).toEqual(["gen_call"]);
+  });
+
+  it("a version no panel has judged", async () => {
+    await expect(getDecision("trg-000001", 1)).resolves.toBeNull();
+  });
+
+  it("a version with no claim package", async () => {
+    await expect(getPackage("trg-000001", 1)).resolves.toBeNull();
+  });
+
+  it("an absent decision is not held by the indefinite cache", async () => {
+    // Only a decision that exists is kept forever. An absent one must be
+    // re-read, or a version judged after it was first looked at would stay
+    // invisible for the life of the tab.
+    await expect(getDecision("trg-000002", 1)).resolves.toBeNull();
+    invalidateReads();
+    vi.unstubAllGlobals();
+    const decided = { policy_id: "trg-000002", version: 1, outcome: "SATISFIED" };
+    const hex =
+      "0x" +
+      Buffer.from(calldata.encode(JSON.stringify(decided)) as Uint8Array).toString("hex");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_u: unknown, o: { body?: string } | undefined) =>
+        new Response(
+          JSON.stringify({ jsonrpc: "2.0", id: JSON.parse(o?.body ?? "{}").id ?? 1, result: hex }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    await expect(getDecision("trg-000002", 1)).resolves.toMatchObject({ outcome: "SATISFIED" });
   });
 });

@@ -80,7 +80,12 @@ async function view(fn: string, args: CalldataEncodable[], key: string, force = 
     }
   }
   if (lastErr) throw lastErr;
-  const value = typeof raw === "string" && raw !== "" ? JSON.parse(raw) : raw;
+  /* The contract says "nothing here" with an empty string. Turning that
+     into null once, here, is the only place it can be done reliably: a
+     caller that trusted the declared type would otherwise render the
+     fields of a string. `??` does not catch "", so this is not optional. */
+  const value =
+    typeof raw === "string" ? (raw === "" ? null : JSON.parse(raw)) : raw;
   cache.set(key, { at: Date.now(), value });
   return value;
 }
@@ -134,18 +139,30 @@ export async function getPoliciesFor(addr: string, force = false): Promise<Polic
 
 export async function getPolicy(id: string, force = false): Promise<Policy | null> {
   const v = await view("get_policy", [id], `policy:${id}`, force);
-  return (v as Policy) ?? null;
+  return (v as Policy | null) ?? null;
 }
 
 /** A decided version never changes, so it is cached indefinitely once seen. */
-export async function getDecision(id: string, version: number, force = false) {
+export async function getDecision(
+  id: string,
+  version: number,
+  force = false,
+): Promise<Decision | null> {
   const key = `decision:${id}:${version}`;
   const hit = cache.get(key);
+  /* Only a decision that exists is held indefinitely, and `investigate`
+     refuses to decide a version twice, so a held one can never go stale. An
+     absent version caches as null, which is falsy, and is re-read on the
+     60 s TTL below until a panel has actually run. */
   if (!force && hit && hit.value) return hit.value as Decision;
   return (await view("get_decision", [id, version], key, force, 60_000)) as Decision | null;
 }
 
-export async function getPackage(id: string, version: number, force = false) {
+export async function getPackage(
+  id: string,
+  version: number,
+  force = false,
+): Promise<ClaimPackage | null> {
   return (await view(
     "get_package",
     [id, version],
