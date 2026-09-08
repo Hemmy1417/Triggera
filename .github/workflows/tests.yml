@@ -22,13 +22,13 @@ jobs:
       # validation of this runner happens where it can: on the deployment
       # itself, byte-verified in docs/DEPLOYMENT.md.
       - name: genvm-lint (AST)
-        run: PYTHONUTF8=1 genvm-lint lint contracts/verda.py --json
+        run: PYTHONUTF8=1 genvm-lint lint contracts/triggera.py --json
       - name: Mutation sweep gate
         run: |
           python - << 'PYEOF'
           import pathlib
           src = pathlib.Path("tests/mutation_sweep.py").read_text(encoding="utf-8")
-          src = src.replace('SRC = pathlib.Path(r"C:/Users/Pc/Desktop/Verda")',
+          src = src.replace('SRC = pathlib.Path(r"C:/Users/Pc/Desktop/Triggera")',
                             'SRC = pathlib.Path(".").resolve()')
           pathlib.Path("/tmp/mutate.py").write_text(src, encoding="utf-8")
           PYEOF
@@ -60,4 +60,4 @@ jobs:
         env:
           # The deployment of record. docs/DEPLOYMENT.md and web/.env.example
           # name the same address (S37); `npm run verify` checks all three.
-          NEXT_PUBLIC_CONTRACT_ADDRESS: "0x397bd60cF62755C281a9a24C6398a316F7814a5e"
+          NEXT_PUBLIC_CONTRACT_ADDRESS: "0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42"
