@@ -6,18 +6,25 @@
  * The design brief puts "why a panel, not an oracle" here rather than on the
  * landing page, and asks for it DEMONSTRATED. So the middle of this page is a
  * worked example with numbers: a record where the average pays and the
- * publisher count does not. Everything else is the protocol's own tables —
- * what the panel is asked, what each determination moves, who may move each
- * state on, and what happens when nobody does.
+ * publisher count does not.
  *
- * Every claim on this page is a claim about contracts/triggera.py, and each
- * one is written from the code rather than from memory: the derivation rules
- * are _derive_outcome, the state transitions are the write methods' own
- * guards, and the bond arithmetic is _bond_for.
+ * This is the one route allowed more than a single sentence, because it
+ * explains the mechanism. It still says things with structure rather than
+ * paragraphs: short titled blocks, label-over-value pairs, and tables that
+ * are read down a column instead of along a sentence.
+ *
+ * Every claim here is a claim about contracts/triggera.py, written from the
+ * code rather than from memory: the derivation rules are _derive_outcome, the
+ * state transitions are the write methods' own guards, and the bond
+ * arithmetic is _bond_for.
+ *
+ * The worked example names the KIND of each publisher. The hostnames those
+ * kinds stand for are machine values, so they live in the technical fold at
+ * the foot of that card and never on the page face.
  */
 
 import Link from "next/link";
-import { Status, Technical } from "../components/bits";
+import { Ident, Status, Technical } from "../components/bits";
 
 const DOCS = "https://github.com/Hemmy1417/Triggera/blob/main/docs";
 
@@ -69,7 +76,8 @@ paid
 
 active -- the cover and its claim grace pass --> expired`;
 
-/** The determinations, and what each one moves. */
+/** The determinations, and what each one moves. UNDETERMINED is a peer of the
+ *  other two here, never a failure and never hidden. */
 const OUTCOMES: Array<{
   state: string;
   label: string;
@@ -80,25 +88,23 @@ const OUTCOMES: Array<{
     state: "satisfied",
     label: "trigger met",
     means:
-      "A majority of the independent publishers that stated a usable reading read past the threshold, over a record the panel called sufficient.",
+      "A majority of the independent publishers that stated a usable reading read past the threshold, over a sufficient record.",
     moves:
-      "Once the appeal window closes, anyone may settle and the whole coverage is credited to the policyholder. The policy is paid and closed.",
+      "Anyone may settle once the appeal window closes. The whole coverage is credited to the policyholder.",
   },
   {
     state: "not-satisfied",
     label: "trigger not met",
-    means:
-      "A majority of those publishers read short of the threshold, again over a sufficient record.",
+    means: "A majority of those publishers read short of the threshold, over a sufficient record.",
     moves:
-      "Nothing moves. The coverage stays in custody and the policy returns to active for the rest of its period; a later event may still be claimed.",
+      "Nothing moves. The policy returns to active for the rest of its period, and a later event may still be claimed.",
   },
   {
     state: "undetermined",
     label: "undetermined",
-    means:
-      "The record does not support a conclusive reading. The protocol will not guess, and a hold is not a denial.",
+    means: "The record does not support a conclusive reading, and the protocol will not guess.",
     moves:
-      "Nothing moves. The policy returns to active, the policyholder may file a better claim inside the claim grace, and after it the insurer may reclaim the coverage.",
+      "Nothing moves, and a hold is not a denial. A better claim may be filed inside the claim grace; after it, the insurer may reclaim the coverage.",
   },
 ];
 
@@ -106,16 +112,63 @@ const OUTCOMES: Array<{
 const HOLDS: Array<[string, string]> = [
   [
     "the record does not establish what the metric did in the insured area",
-    "The panel judged the evidence less than sufficient. No count is run at all: an outcome derived over an insufficient record cannot become state, and cannot settle even if it somehow did.",
+    "The evidence was judged less than sufficient, so no count is run at all — and an outcome derived over an insufficient record cannot settle.",
   ],
   [
     "fewer independent publishers than the policy requires stated a usable reading",
-    "The publishers who spoke were too few. Unreachable pages, readings for the wrong window or the wrong place, and pages that are not what their agreed label says all leave a publisher silent rather than counted.",
+    "Too few publishers spoke. An unreachable page, the wrong window, the wrong place, or a page that is not what its agreed label says all leave a publisher silent rather than counted.",
   ],
   [
     "the publishers divided exactly, and the protocol will not break a tie by guessing",
-    "An even split. Neither side has a majority, so neither side wins; the claim can be refiled with a better record while the grace runs.",
+    "An even split. Neither side has a majority, so neither side wins; the claim can be refiled while the grace runs.",
   ],
+];
+
+/** The worked example. The KIND is what the page shows; the host is a machine
+ *  value and belongs in the fold beneath the table. */
+const EXAMPLE: Array<{
+  page: string;
+  kind: string;
+  host: string;
+  reading: string;
+  verdict?: { state: string; label: string };
+  note?: string;
+}> = [
+  {
+    page: "district gauge summary",
+    kind: "Meteorological agency",
+    host: "agency.example.gov",
+    reading: "96 mm",
+    verdict: { state: "contradicting", label: "short of it" },
+  },
+  {
+    page: "seasonal bulletin",
+    kind: "Meteorological agency",
+    host: "agency.example.gov",
+    reading: "104 mm",
+    note: "the same voice, not a second one — heard at 96 mm, its least trigger-favourable page",
+  },
+  {
+    page: "station observation",
+    kind: "Weather service",
+    host: "weather.example.com",
+    reading: "101 mm",
+    verdict: { state: "contradicting", label: "short of it" },
+  },
+  {
+    page: "catchment report",
+    kind: "Satellite observatory",
+    host: "satellite.example.org",
+    reading: "318 mm",
+    verdict: { state: "qualifying", label: "meets it" },
+  },
+  {
+    page: "the policyholder's own rain log",
+    kind: "The policyholder",
+    host: "holder.example.net",
+    reading: "240 mm",
+    note: "a party's own source — informs only, never counts",
+  },
 ];
 
 /** The lifecycle: who may move each state on, and what happens if nobody
@@ -130,44 +183,42 @@ const LIFECYCLE: Array<{
   {
     state: "draft",
     label: "draft",
-    who: "The insurer wrote it and deposited the coverage. Anyone may become the policyholder by paying exactly the premium; the insurer alone may cancel it.",
-    ifNobody:
-      "It stays a draft. The coverage is the insurer's to withdraw at any time until someone pays the premium.",
+    who: "Anyone may become the policyholder by paying exactly the premium. Only the insurer may cancel.",
+    ifNobody: "It stays a draft, and the coverage is the insurer's to withdraw until someone pays.",
   },
   {
     state: "active",
     label: "active",
-    who: "The policyholder files a claim: an event window that is over and inside the cover, their own claimed reading, and the pages to read — all from the frozen basis.",
+    who: "The policyholder files a claim: a finished event window inside the cover, their claimed reading, and pages from the frozen basis.",
     ifNobody:
-      "When the cover and its claim grace have both passed, anyone may expire the policy and the whole coverage returns to the insurer.",
+      "After the cover and its claim grace, anyone may expire the policy and the whole coverage returns to the insurer.",
   },
   {
     state: "investigating",
     label: "investigating",
-    who: "Anyone may run the investigation. It is never hostage to one party's availability, and it runs at most once per claim version.",
+    who: "Anyone may run the investigation, at most once per claim version. It is never hostage to one party's availability.",
     ifNobody:
-      "The claim grace still runs out. Anyone may then expire the policy, once an uninvestigated claim has had a full finality window to be read.",
+      "The claim grace still runs out, once an uninvestigated claim has had a full finality window to be read.",
   },
   {
     state: "pending-finality",
     label: "pending finality",
-    who: "Nobody. The decision is recorded and assigns nothing; it waits out the finality window the policy set.",
-    ifNobody:
-      "It waits. After the window, anyone may promote it — that is the call that turns a record into the policy's state.",
+    who: "Nobody. The decision is recorded, assigns nothing, and waits out the finality window.",
+    ifNobody: "After the window, anyone may promote it — the call that turns a record into state.",
   },
   {
     state: "final",
     label: "final",
-    who: "Either party may appeal inside the appeal window, with a bond and at most one new source from inside the agreed basis.",
+    who: "Either party may appeal inside the appeal window, with a bond and at most one new source from the agreed basis.",
     ifNobody:
-      "After the appeal window, anyone may settle: a met trigger pays the coverage, an unmet one returns the policy to active.",
+      "After the appeal window, anyone may settle: a met trigger pays, an unmet one returns the policy to active.",
   },
   {
     state: "investigating",
     label: "appeal open",
-    who: "Anyone may run the re-investigation. The second panel re-reads the recorded bytes of the appealed round and fetches live only what the appellant added.",
+    who: "Anyone may run the re-investigation. It re-reads the recorded bytes of the appealed round and fetches live only what the appellant added.",
     ifNobody:
-      "One hour after filing, anyone may lapse the appeal: the snapshot taken at filing is restored exactly and the bond returns to the appellant.",
+      "An hour after filing, anyone may lapse the appeal: the snapshot taken at filing is restored exactly and the bond returns.",
   },
   {
     state: "paid",
@@ -186,72 +237,78 @@ const LIFECYCLE: Array<{
 export default function Rules() {
   return (
     <main className="page book">
-      <section className="metricstrip">
-        <span className="metric">
-          <span className="metric-label">What the panel returns</span>
-          <span className="metric-value">readings</span>
-        </span>
-        <span className="metric">
-          <span className="metric-label">What derives the determination</span>
-          <span className="metric-value">code</span>
-        </span>
-        <span className="metric">
-          <span className="metric-label">One voice per</span>
-          <span className="metric-value">publisher</span>
-        </span>
-        <span className="metric">
-          <span className="metric-label">Value leaves through</span>
-          <span className="metric-value">one method</span>
-        </span>
+      <section>
+        <div className="pagehead">
+          <h1 className="heading">How it works</h1>
+          <p className="lede-line">
+            A policy pays on what independent publishers state, counted one publisher at a time and
+            never averaged.
+          </p>
+        </div>
+
+        <div className="metricstrip">
+          <span className="metric">
+            <span className="metric-label">The panel returns</span>
+            <span className="metric-value">readings</span>
+          </span>
+          <span className="metric">
+            <span className="metric-label">The determination is derived by</span>
+            <span className="metric-value">code</span>
+          </span>
+          <span className="metric">
+            <span className="metric-label">One voice per</span>
+            <span className="metric-value">publisher</span>
+          </span>
+          <span className="metric">
+            <span className="metric-label">Value leaves through</span>
+            <span className="metric-value">one method</span>
+          </span>
+        </div>
       </section>
 
-      {/* ── what the panel is asked ─────────────────────────────────────── */}
+      {/* ── what is asked, and what derives the answer ──────────────────── */}
       <section className="grid two">
         <div className="card">
-          <span className="eyebrow">What the panel is asked</span>
-          <p className="body" style={{ marginTop: 12 }}>
-            Every validator fetches each named source itself, under consensus, and is asked four
-            things about it and two about the record as a whole. It is asked for none of them in
-            words of its own: the answers are a fixed shape, and anything else is refused at the
-            boundary before it can become a record.
-          </p>
-          <dl className="factlist">
+          <div className="card-head">
+            <span className="card-title">What the panel is asked</span>
+            <span className="chip">Every validator fetches each source itself</span>
+          </div>
+          <dl className="factlist stacked">
             <div>
               <dt>Per source</dt>
-              <dd>
-                The whole-number reading the page itself states for the insured area over a window
-                of the agreed length — or nothing, where the page states no such value. Then three
-                yes-or-no questions: does the window fit, does the area fit, and is the page what
-                its agreed label says it is.
+              <dd className="sm">
+                One whole-number reading for the insured area over a window of the agreed length, or
+                nothing. Then three yes-or-no checks: the window, the area, and whether the page is
+                what its agreed label says.
               </dd>
             </div>
             <div>
               <dt>For the record</dt>
-              <dd>
-                Whether it establishes what the metric did at all, which material contradictions it
-                shows, and how confident the panel is that it tells the event&apos;s true story.
+              <dd className="sm">
+                Whether it establishes what the metric did, which material contradictions it shows,
+                and how confident the panel is.
               </dd>
             </div>
             <div>
               <dt>Never asked</dt>
-              <dd>
-                Whether the trigger was met, and what anyone is owed. The panel does not decide and
-                does not compute an amount.
+              <dd className="sm">Whether the trigger was met, or what anyone is owed.</dd>
+            </div>
+            <div>
+              <dt>Answer shape</dt>
+              <dd className="sm">
+                Fixed. Words of the panel&apos;s own are refused at the boundary, before they can
+                become a record.
               </dd>
             </div>
           </dl>
         </div>
 
         <div className="card">
-          <span className="eyebrow">What derives the determination</span>
-          <p className="body" style={{ marginTop: 12 }}>
-            Deterministic code, run identically inside every validator&apos;s own judgment, turns
-            those readings into the fields money reads. A validator that agrees with the leader
-            about the readings but re-derives a different outcome from them refuses the round — so
-            the arithmetic below is not a description of what happens, it is the thing consensus is
-            reached on.
-          </p>
-          <div className="window" style={{ marginTop: 20 }}>
+          <div className="card-head">
+            <span className="card-title">What derives the determination</span>
+            <span className="chip">Deterministic code, in every validator</span>
+          </div>
+          <div className="window">
             <div className="window-bar">
               <i className="window-dot" style={{ background: "var(--iris)" }} />
               <span className="eyebrow">the derivation, in order</span>
@@ -260,18 +317,35 @@ export default function Rules() {
               <pre style={PRE}>{DERIVATION}</pre>
             </div>
           </div>
-          <p className="caption muted" style={{ marginTop: 16 }}>
-            A source is usable only if it is independent of both parties, was readable this round,
-            fits the window and the area, is what its label says, and states a sane number. Party
-            sources never enter this arithmetic.
-          </p>
+          <dl className="factlist stacked" style={{ marginTop: 28 }}>
+            <div>
+              <dt>Consensus is reached on this</dt>
+              <dd className="sm">
+                A validator that agrees with the leader about the readings but re-derives a
+                different outcome refuses the round.
+              </dd>
+            </div>
+            <div>
+              <dt>A usable source</dt>
+              <dd className="sm">
+                Independent of both parties, readable this round, right window, right area, what its
+                label says, and a sane number.
+              </dd>
+            </div>
+            <div>
+              <dt>A party&apos;s own source</dt>
+              <dd className="sm">Never enters this arithmetic.</dd>
+            </div>
+          </dl>
         </div>
       </section>
 
-      {/* ── the determination table ─────────────────────────────────────── */}
+      {/* ── the three determinations ────────────────────────────────────── */}
       <section className="card">
-        <span className="eyebrow">The three determinations</span>
-        <div className="tablewrap" style={{ marginTop: 20 }}>
+        <div className="card-head">
+          <span className="card-title">The three determinations</span>
+        </div>
+        <div className="tablewrap">
           <table className="rows">
             <thead>
               <tr>
@@ -287,17 +361,17 @@ export default function Rules() {
                     <Status state={o.state} label={o.label} />
                   </td>
                   <td className="body-sm">{o.means}</td>
-                  <td className="body-sm">{o.moves}</td>
+                  <td className="body-sm muted">{o.moves}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        <p className="body" style={{ marginTop: 28 }}>
-          A hold names its reason, and there are exactly three of them.
-        </p>
-        <div className="tablewrap" style={{ marginTop: 16 }}>
+        <div className="card-head" style={{ marginTop: 48 }}>
+          <span className="card-title">A hold names its reason, and there are three</span>
+        </div>
+        <div className="tablewrap">
           <table className="rows">
             <thead>
               <tr>
@@ -319,16 +393,34 @@ export default function Rules() {
 
       {/* ── one voice per publisher, demonstrated ───────────────────────── */}
       <section className="card">
-        <span className="eyebrow">Why a panel, and not an oracle</span>
-        <p className="body measure" style={{ marginTop: 12 }}>
-          A policy pays on what independent publishers state, counted one publisher at a time. That
-          is not a stylistic choice, and the difference is easiest to see on a record where the two
-          approaches disagree. Take a trigger of{" "}
-          <span className="figure">rainfall at or above 120 mm</span> and five pages the parties
-          agreed to read.
-        </p>
+        <div className="card-head">
+          <span className="card-title">Why a panel, and not an oracle</span>
+        </div>
 
-        <div className="tablewrap" style={{ marginTop: 24 }}>
+        <div className="pairs three">
+          <div className="pair">
+            <span className="pair-label">Trigger</span>
+            <span className="pair-value lg">
+              120<span className="unit">mm</span>
+            </span>
+            <span className="pair-note">rainfall, at or above</span>
+          </div>
+          <div className="pair">
+            <span className="pair-label">Pages the parties agreed to read</span>
+            <span className="pair-value lg">5</span>
+            <span className="pair-note">one of them a party&apos;s own</span>
+          </div>
+          <div className="pair">
+            <span className="pair-label">Independent publishers</span>
+            <div className="count">
+              <span className="big-figure">3</span>
+              <span className="of">across 4 independent pages</span>
+            </div>
+            <span className="pair-note">two pages, one voice</span>
+          </div>
+        </div>
+
+        <div className="tablewrap" style={{ marginTop: 48 }}>
           <table className="rows">
             <thead>
               <tr>
@@ -339,89 +431,69 @@ export default function Rules() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>district gauge summary</td>
-                <td>
-                  <span className="ident">agency.example.gov</span>
-                </td>
-                <td className="num">96 mm</td>
-                <td className="body-sm">
-                  <Status state="contradicting" label="short of it" />
-                </td>
-              </tr>
-              <tr>
-                <td>seasonal bulletin</td>
-                <td>
-                  <span className="ident">agency.example.gov</span>
-                </td>
-                <td className="num">104 mm</td>
-                <td className="body-sm muted">
-                  the same publisher, so not a second voice — and 96 is its least
-                  trigger-favourable page, so 96 is what it says
-                </td>
-              </tr>
-              <tr>
-                <td>station observation</td>
-                <td>
-                  <span className="ident">weather.example.com</span>
-                </td>
-                <td className="num">101 mm</td>
-                <td className="body-sm">
-                  <Status state="contradicting" label="short of it" />
-                </td>
-              </tr>
-              <tr>
-                <td>catchment report</td>
-                <td>
-                  <span className="ident">satellite.example.org</span>
-                </td>
-                <td className="num">318 mm</td>
-                <td className="body-sm">
-                  <Status state="qualifying" label="meets it" />
-                </td>
-              </tr>
-              <tr>
-                <td>the policyholder&apos;s own rain log</td>
-                <td>
-                  <span className="ident">holder.example.net</span>
-                </td>
-                <td className="num">240 mm</td>
-                <td className="body-sm muted">a party&apos;s own source: informs only, never counts</td>
-              </tr>
+              {EXAMPLE.map((r) => (
+                <tr key={r.page}>
+                  <td className="body-sm">{r.page}</td>
+                  <td>
+                    <span className="chip">{r.kind}</span>
+                  </td>
+                  <td className="num">{r.reading}</td>
+                  <td className="body-sm">
+                    {r.verdict ? (
+                      <Status state={r.verdict.state} label={r.verdict.label} />
+                    ) : (
+                      <span className="muted">{r.note}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
 
-        <div className="grid two" style={{ marginTop: 28 }}>
-          <div>
-            <p className="eyebrow">If the readings were averaged</p>
-            <p className="body" style={{ marginTop: 10 }}>
-              <span className="figure">171.8 mm</span> across the five pages, or{" "}
-              <span className="figure">154.75 mm</span> across the four independent ones. Either
-              average clears 120, so the policy pays{" "}
-              <Status state="satisfied" label="trigger met" /> — on the strength of one outlier and
-              one interested party.
-            </p>
+        <div className="grid two" style={{ marginTop: 48 }}>
+          <div className="tile quiet">
+            <div className="pair">
+              <span className="pair-label">If the readings were averaged</span>
+              <span className="pair-value lg">
+                171.8<span className="unit">mm</span>
+              </span>
+              <span className="pair-note">
+                154.75 mm across the four independent pages alone. Either average clears 120, on the
+                strength of one outlier and one interested party.
+              </span>
+              <Status state="satisfied" label="trigger met" />
+            </div>
           </div>
-          <div>
-            <p className="eyebrow">Counted one publisher at a time</p>
-            <p className="body" style={{ marginTop: 10 }}>
-              Three independent publishers speak: 96, 101 and 318 mm. One of the three meets the
-              threshold, two are short of it, so the majority is short and the determination is{" "}
-              <Status state="not-satisfied" label="trigger not met" />. Nothing moves, and the
-              policy stays live.
-            </p>
+          <div className="tile">
+            <div className="pair">
+              <span className="pair-label">Counted one publisher at a time</span>
+              <div className="count">
+                <span className="big-figure">1</span>
+                <span className="of">of 3 publishers past the threshold</span>
+              </div>
+              <span className="pair-note">
+                96, 101 and 318 mm. The majority is short, so nothing moves and the policy stays
+                live.
+              </span>
+              <Status state="not-satisfied" label="trigger not met" />
+            </div>
           </div>
         </div>
 
-        <p className="body measure" style={{ marginTop: 24 }}>
-          The publisher count does not decide it either. Adding four more pages from{" "}
-          <span className="ident">agency.example.gov</span> changes nothing at all: they are the
-          same voice, and stacking pages from one publisher can neither manufacture a second
-          opinion nor improve the number that publisher is heard with. That is the property an
-          oracle reporting a single number cannot give you, and it is why the record is a panel of
-          named publishers rather than a feed.
+        <p className="body-sm muted measure" style={{ marginTop: 28 }}>
+          Four more pages from the same agency would change nothing: they are the same voice, and
+          stacking pages can neither manufacture a second opinion nor improve the number a publisher
+          is heard with.
         </p>
+
+        <Technical
+          summary="The example's sources"
+          rows={EXAMPLE.map((r): [string, React.ReactNode] => [
+            r.page,
+            <Ident key={r.page} value={r.host} label="Copy host" />,
+          ])}
+        />
       </section>
 
       {/* ── the lifecycle ───────────────────────────────────────────────── */}
@@ -437,23 +509,36 @@ export default function Rules() {
         </div>
 
         <div className="card">
-          <span className="eyebrow">Nothing is anyone&apos;s to stall</span>
-          <p className="body" style={{ marginTop: 12 }}>
-            The two parties can start things and the two parties can appeal. They cannot stop
-            anything: every state past the draft can be moved on by a stranger, and every state has
-            an exit that does not need the party it would inconvenience.
-          </p>
-          <p className="body-sm muted" style={{ marginTop: 16 }}>
-            Wall-clock windows are read from a consensus clock the contract fetches itself, from
-            several witnesses that must agree with each other. No clock, no write: every timed
-            method fails closed rather than guessing the time.
-          </p>
+          <div className="card-head">
+            <span className="card-title">Nothing is anyone&apos;s to stall</span>
+          </div>
+          <dl className="factlist stacked">
+            <div>
+              <dt>A party may</dt>
+              <dd className="sm">Start things, and appeal.</dd>
+            </div>
+            <div>
+              <dt>A party may not</dt>
+              <dd className="sm">
+                Stop anything. Every state past the draft has an exit a stranger can take.
+              </dd>
+            </div>
+            <div>
+              <dt>The clock</dt>
+              <dd className="sm">
+                Read from several witnesses that must agree with each other. No clock, no write:
+                every timed method fails closed rather than guessing the time.
+              </dd>
+            </div>
+          </dl>
         </div>
       </section>
 
       <section className="card">
-        <span className="eyebrow">Who may move each state on</span>
-        <div className="tablewrap" style={{ marginTop: 20 }}>
+        <div className="card-head">
+          <span className="card-title">Who may move each state on</span>
+        </div>
+        <div className="tablewrap">
           <table className="rows">
             <thead>
               <tr>
@@ -480,73 +565,78 @@ export default function Rules() {
       {/* ── money and windows ───────────────────────────────────────────── */}
       <section className="grid two">
         <div className="card">
-          <span className="eyebrow">Where the money is, at every moment</span>
-          <dl className="factlist">
-            <div>
-              <dt>The coverage</dt>
-              <dd>
-                Deposited by the insurer in the same signature that writes the policy: a policy that
-                could pay more than it holds is not an instrument. It leaves in exactly two ways —
-                the whole of it to the policyholder on a finalized met trigger, or the whole of it
-                back to the insurer on the expiry reclaim. Nothing pays part of it.
-              </dd>
+          <div className="card-head">
+            <span className="card-title">Where the money is</span>
+          </div>
+          <div className="pairs two">
+            <div className="pair">
+              <span className="pair-label">The coverage</span>
+              <span className="pair-value">Held whole</span>
+              <span className="pair-note">
+                Deposited by the insurer in the signature that writes the policy. It leaves in two
+                ways only: all of it to the policyholder on a finalized met trigger, or all of it
+                back to the insurer on the expiry reclaim.
+              </span>
             </div>
-            <div>
-              <dt>The premium</dt>
-              <dd>
-                Paid by whoever activates the policy, and earned by the insurer at that moment. It
-                buys the cover, not the outcome, and it is not refunded by a determination going
-                either way.
-              </dd>
+            <div className="pair">
+              <span className="pair-label">The premium</span>
+              <span className="pair-value">Earned on activation</span>
+              <span className="pair-note">
+                It buys the cover, not the outcome, and no determination refunds it.
+              </span>
             </div>
-            <div>
-              <dt>The appeal bond</dt>
-              <dd>
-                5% of the coverage, never below 0.05 GEN, posted with the appeal. It returns to the
-                appellant only if the second panel reaches a different outcome; where the outcome
-                stands, the bond goes to the other party, who carried the delay. An appeal that
-                never concludes is lapsed by anyone after an hour and the bond returns.
-              </dd>
+            <div className="pair">
+              <span className="pair-label">The appeal bond</span>
+              <span className="pair-value lg">
+                5%<span className="unit">of the coverage</span>
+              </span>
+              <span className="pair-note">
+                Never below 0.05 GEN. It returns only if the second panel reaches a different
+                outcome; where the outcome stands, it goes to the party that carried the delay.
+              </span>
             </div>
-            <div>
-              <dt>Getting paid</dt>
-              <dd>
-                Every credit lands in a ledger balance and one method moves value out of the
-                contract, called by the party the balance belongs to. Nothing is pushed anywhere,
-                and a settlement cannot fail on a recipient that will not accept a transfer.
-              </dd>
+            <div className="pair">
+              <span className="pair-label">Getting paid</span>
+              <span className="pair-value">Pull, never push</span>
+              <span className="pair-note">
+                Every credit lands in a ledger balance, and one method moves value out of the
+                contract, called by the party the balance belongs to.
+              </span>
             </div>
-          </dl>
+          </div>
         </div>
 
         <div className="card">
-          <span className="eyebrow">Fees, and what &ldquo;finalized&rdquo; means here</span>
-          <dl className="factlist">
-            <div>
-              <dt>Every write is sized before it is signed</dt>
-              <dd>
-                The app simulates the call first, which is what produces the fee deposit the wallet
-                shows you. The simulation also runs the method, so a write the contract would refuse
-                fails there, in the contract&apos;s own words, before the wallet ever opens.
-              </dd>
+          <div className="card-head">
+            <span className="card-title">Fees, and what &ldquo;finalized&rdquo; means here</span>
+          </div>
+          <div className="pairs two">
+            <div className="pair">
+              <span className="pair-label">Before the wallet opens</span>
+              <span className="pair-value">Simulated</span>
+              <span className="pair-note">
+                The simulation sizes the fee and runs the method, so a write the contract would
+                refuse fails there, in the contract&apos;s own words.
+              </span>
             </div>
-            <div>
-              <dt>The deposit is not the price</dt>
-              <dd>
-                It sizes the round and is largely refunded; the cost of a write settles far below
-                what the wallet quotes. The quote is a ceiling, not a charge.
-              </dd>
+            <div className="pair">
+              <span className="pair-label">The wallet&apos;s quote</span>
+              <span className="pair-value">A ceiling</span>
+              <span className="pair-note">
+                The deposit sizes the round and is largely refunded; the cost settles far below it.
+              </span>
             </div>
-            <div>
-              <dt>Accepted is not finalized</dt>
-              <dd>
+            <div className="pair wide">
+              <span className="pair-label">Accepted is not finalized</span>
+              <span className="pair-value">Said only when proven</span>
+              <span className="pair-note">
                 A read proving the new state is live means the write was accepted, which the chain
                 can still walk back. This app says finalized only when the transaction itself
-                reports finalized with a successful deciding execution — and where it cannot prove
-                that yet, it says so rather than rounding up.
-              </dd>
+                reports finalized with a successful deciding execution, and says so plainly where it
+                cannot prove that yet.
+              </span>
             </div>
-          </dl>
+          </div>
           <Technical
             summary="Where to read the rest"
             rows={[
@@ -576,7 +666,7 @@ export default function Rules() {
       <section className="card tight">
         <p className="body">
           The rules above are the contract&apos;s, and the record is where they are visible.{" "}
-          <Link href="/" className="ghost">Read the policy book</Link>, or{" "}
+          <Link href="/policies" className="ghost">Read the policy book</Link>, or{" "}
           <Link href="/create" className="ghost">write a policy</Link>.
         </p>
       </section>

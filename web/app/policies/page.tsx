@@ -3,27 +3,30 @@
 /**
  * THE POLICY BOOK — every policy the contract holds, as its own route.
  *
- * The landing page opens with the claim and shows the same rows underneath
- * it. This is where the nav points, so it opens with the book and nothing
- * else: a reader who came here to look something up is not made to read a
- * pitch first.
+ * The nav points here, so it opens with the book and nothing else: a reader
+ * who came to look something up is not made to read a pitch first.
  *
- * The views, the filters and the row are deliberately the SAME machinery as
- * the landing page's rather than a second, thinner listing. Two listings of
- * one book drift apart, and the moment they do the record has two versions
- * of itself. The landing page is left untouched; the shared parts are copied
- * whole, not imported out of it, so neither page can break the other.
+ * The row is written HERE rather than shared with the landing page. Two
+ * listings of one book drift apart, and the moment they do the record has two
+ * versions of itself; the shared parts are copied whole, not imported, so
+ * neither page can break the other.
  *
- * The count in the header is the contract's own total — not the length of
- * whatever this view has filtered, which is reported separately in the
- * toolbar so the two numbers can never be mistaken for each other.
+ * TWO COUNTS, LABELLED APART. What the contract holds and what this view has
+ * filtered are different numbers, so each carries its own label rather than a
+ * sentence explaining the difference. Neither is ever rendered as 0 from a
+ * failed read — an unread count is "—", which means unknown.
+ *
+ * NO MACHINE VALUE ON THE FACE. A publisher is named by the KIND both parties
+ * agreed to, never by its hostname; the hostname is a machine string and lives
+ * on the policy's own page, in the fold, beside the origin it belongs to.
  */
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { formatGen } from "../../lib/config";
 import { getPolicies, type Policy } from "../../lib/read";
-import { StateNote } from "../components/bits";
-import { PolicyRow } from "../components/PolicyRow";
+import { StateNote, Status } from "../components/bits";
+import { triggerSentence } from "../components/PolicyRow";
 
 type Load<T> = { state: "loading" } | { state: "ok"; data: T } | { state: "down"; why: string };
 
@@ -59,6 +62,90 @@ const SORTS = [
   { id: "deadline", label: "Coverage ends" },
 ] as const;
 type SortId = (typeof SORTS)[number]["id"];
+
+/* ── the row ─────────────────────────────────────────────────────────────── */
+
+const KIND_WORDS: Record<string, string> = {
+  METEOROLOGICAL_AGENCY: "meteorological agency",
+  WEATHER_PROVIDER: "weather provider",
+  SEISMIC_NETWORK: "seismic network",
+  SATELLITE_OBSERVATION: "satellite observation",
+  GOVERNMENT_RECORD: "government record",
+  NEWS_REPORT: "news report",
+  STATION_LOG: "station log",
+  OTHER: "other",
+};
+
+function kindWords(k: string): string {
+  return KIND_WORDS[k] ?? k.toLowerCase().replace(/_/g, " ");
+}
+
+/** What the record currently says about the trigger, in words. A hue is
+ *  attached to it and to nothing else on the row. */
+function determination(p: Policy): { state: string; label: string } {
+  if (p.outcome === "SATISFIED") return { state: "satisfied", label: "trigger met" };
+  if (p.outcome === "NOT_SATISFIED") return { state: "not-satisfied", label: "trigger not met" };
+  if (p.outcome === "UNDETERMINED") return { state: "undetermined", label: "undetermined" };
+  if (p.status === "INVESTIGATING") return { state: "investigating", label: "reading evidence" };
+  if (p.status === "PENDING_FINALITY") return { state: "pending-finality", label: "awaiting finality" };
+  return { state: p.status.toLowerCase(), label: "no claim filed" };
+}
+
+/**
+ * One policy, at a glance: the trigger it pays on, the money behind it, and
+ * how many publishers must agree. The window, the origins and the rest of the
+ * record are one click away on the policy's own page — this row is the way in,
+ * not a second copy of it.
+ */
+function BookRow({ policy: p }: { policy: Policy }) {
+  const d = determination(p);
+  const publishers = (p.basis ?? []).filter((b) => b.class === "INDEPENDENT");
+  /* The kinds, deduplicated and in the order the policy names them. This is
+     the human fact the hostnames stand for; the hostnames themselves are
+     machine strings and are not shown here. */
+  const kinds = Array.from(new Set(publishers.map((b) => kindWords(b.kind))));
+
+  return (
+    <Link href={`/policies/${p.policy_id}`} className="policyrow">
+      <div className="policyrow-head">
+        <div style={{ minWidth: 0 }}>
+          <div className="policyrow-title">{triggerSentence(p)}</div>
+          <div className="policyrow-sub">
+            {p.title} · {p.region}, {p.country}
+          </div>
+        </div>
+        <div className="policyrow-badges">
+          <span className="badge">{p.event_type.toLowerCase()}</span>
+          <Status state={d.state} label={d.label} />
+        </div>
+      </div>
+
+      <dl className="policyrow-metrics">
+        <div className="rowmetric">
+          <dt>Coverage</dt>
+          <dd className="figure">{formatGen(p.coverage_atto)} GEN</dd>
+        </div>
+        <div className="rowmetric">
+          <dt>Premium</dt>
+          <dd className="figure">{formatGen(p.premium_atto)} GEN</dd>
+        </div>
+        {/* Publishers are COUNTED, never averaged: how many must agree, out of
+            how many the policy names, and what kinds of body they are. */}
+        <div className="rowmetric">
+          <dt>Publishers must agree</dt>
+          <dd className="fact">
+            <span className="fact-main figure">
+              {p.min_independent} of {publishers.length || "—"}
+            </span>
+            {kinds.length > 0 ? <span className="fact-qual">{kinds.join(" · ")}</span> : null}
+          </dd>
+        </div>
+      </dl>
+    </Link>
+  );
+}
+
+/* ── the page ────────────────────────────────────────────────────────────── */
 
 export default function PolicyBookPage() {
   const [book, setBook] = useState<Load<{ total: number; policies: Policy[] }>>({
@@ -101,49 +188,37 @@ export default function PolicyBookPage() {
 
   return (
     <main className="page">
-      <header>
+      <header className="pagehead">
         <p className="eyebrow">the record</p>
-        <h1 className="display" style={{ marginTop: "var(--gap-tight)" }}>
-          The policy book
-        </h1>
-        <p className="body muted measure" style={{ marginTop: "var(--gap-tight)" }}>
-          Every policy written on this contract: the trigger it pays on, the money behind
-          it, who its evidence may come from, and whatever the record currently says about
-          it.
-        </p>
-        <p className="body-sm muted" style={{ marginTop: "var(--gap-tight)" }}>
-          {book.state === "ok" ? (
-            <>
-              <span className="figure">{book.data.total}</span>{" "}
-              {book.data.total === 1 ? "policy has" : "policies have"} been written here.
-            </>
-          ) : book.state === "loading" ? (
-            <>Counting what the contract holds…</>
-          ) : (
-            <>The count could not be read, so it is unknown rather than zero.</>
-          )}
+        <h1 className="display">The policy book</h1>
+        <p className="lede-line">
+          Every policy this contract holds, and what the record says about each.
         </p>
       </header>
 
-      {/* tabs switch the data view */}
-      <nav className="tabs" aria-label="Policy views">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={t.id === tab ? "tab on" : "tab"}
-            onClick={() => setTab(t.id)}
-            aria-pressed={t.id === tab}
-          >
-            {t.label}
-          </button>
-        ))}
-        <Link href="/create" className="pill" style={{ marginLeft: "auto" }}>
+      {/* the views, and the one action the page offers */}
+      <div className="toolbar">
+        <nav className="tabs" aria-label="Policy views">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={t.id === tab ? "tab on" : "tab"}
+              onClick={() => setTab(t.id)}
+              aria-pressed={t.id === tab}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <span className="spacer" />
+        <Link href="/create" className="pill primary">
           Write a policy
         </Link>
-      </nav>
+      </div>
 
-      {/* the control surface: filters and sort are first-class */}
+      {/* filters left, counts right. The two counts answer different questions
+          and say so with their labels; "—" is unknown, never zero. */}
       <div className="toolbar">
         <label className="control">
           <span className="control-label">Event</span>
@@ -166,49 +241,35 @@ export default function PolicyBookPage() {
             ))}
           </select>
         </label>
-        {book.state === "ok" && (
-          <span className="caption muted" style={{ marginLeft: "auto" }}>
-            {shown.length} of {book.data.total} shown
-          </span>
-        )}
+        <span className="spacer" />
+        <div className="pair">
+          <span className="pair-label">In this view</span>
+          <span className="pair-value">{book.state === "ok" ? shown.length : "—"}</span>
+        </div>
+        <div className="pair">
+          <span className="pair-label">On this contract</span>
+          <span className="pair-value">{book.state === "ok" ? book.data.total : "—"}</span>
+        </div>
       </div>
 
-      {/* three states, three sentences: a read that failed must never render
-          as a book with nothing in it. */}
-      {book.state === "loading" && (
-        <StateNote kind="loading">Reading the policy book from the contract…</StateNote>
-      )}
+      {/* three states, three shapes: a read that failed must never render as a
+          book with nothing in it. */}
+      {book.state === "loading" && <p className="empty">Reading…</p>}
       {book.state === "down" && (
         <StateNote kind="unreachable">
-          The policy book could not be read just now. This is the network between you and
-          the contract, not the record itself.
+          The policy book could not be read just now — the network between you and the
+          contract, not the record itself.
         </StateNote>
       )}
       {book.state === "ok" && shown.length === 0 && (
-        <StateNote kind="empty">
-          {book.data.total === 0 ? (
-            <>
-              No policy has been written on this contract yet.{" "}
-              <Link href="/create" className="ghost">
-                Write the first
-              </Link>
-              .
-            </>
-          ) : (
-            <>
-              No policy matches this view. Widen it, or{" "}
-              <Link href="/create" className="ghost">
-                write one
-              </Link>
-              .
-            </>
-          )}
-        </StateNote>
+        <p className="empty">
+          {book.data.total === 0 ? "No policy written yet." : "No policy in this view."}
+        </p>
       )}
       {book.state === "ok" && shown.length > 0 && (
         <div className="policyrows">
           {shown.map((p) => (
-            <PolicyRow key={p.policy_id} policy={p} />
+            <BookRow key={p.policy_id} policy={p} />
           ))}
         </div>
       )}

@@ -3,27 +3,25 @@
 /**
  * THE INVESTIGATION — one round of the panel, whole.
  *
- * This is the page where GenLayer is visibly doing the work: a question was
- * put to a panel, every validator fetched the named pages itself, each one
- * reported what its page said, and deterministic code counted the publishers
- * and derived an outcome nobody chose. The page is ordered so it can be read
- * top to bottom as that sequence — the question, the determination drawn, the
- * round in stages, then every source the count was made of, then the panel's
- * own words.
+ * Ordered so it reads as the sequence it describes: the question put to the
+ * panel, the determination drawn, the round in stages, every source the count
+ * was made of, then the panel's own words.
  *
- * Two rules the rest of the app also keeps, and this page keeps hardest:
+ * Three rules the rest of the app also keeps, and this page keeps hardest:
  *
- *   THE PROSE HAS NO MACHINE VALUES IN IT. No enum spelling, no null, no
- *   hash, no epoch integer. A reading is "states 157 km/h"; a check is
- *   "outside the insured area"; a missing figure is "states no usable
- *   reading". Urls, digests and fetch epochs live in the technical folds,
- *   which is what they are for.
+ *   NO MACHINE VALUE ON THE PAGE FACE. Hostnames, urls, digests, fetch epochs
+ *   and coordinates live in the technical folds, which is what they are for.
+ *   The face carries the human fact each one stands for: a publisher's agreed
+ *   kind, a named place, a date.
  *
- *   THE PICTURE IS A COUNT, NOT AN AVERAGE. ThresholdScale places one node
- *   per source against the agreed threshold. Independent readings are marked
- *   past or short of it, a party's own source is hollow because it never
- *   counts, and a source the round could not use is neither — the same
- *   arithmetic the contract runs, drawn rather than described.
+ *   LABELS, NOT SENTENCES. Where a card wanted a paragraph it lays out
+ *   label/value pairs instead. The page is allowed one sentence — the lede —
+ *   and every claim the old prose made survives as a label, a tag or a fold.
+ *
+ *   THE PICTURE IS A COUNT, NOT AN AVERAGE. ThresholdScale places one node per
+ *   source against the agreed threshold. A party's own source is hollow
+ *   because it never counts, and a source the round could not use is neither —
+ *   the same arithmetic the contract runs, drawn rather than described.
  *
  * A version that was never judged is the state most readers will meet first,
  * because a policy with no claim filed has no rounds at all. It says exactly
@@ -44,14 +42,16 @@ import {
   type Policy,
 } from "../../../../../lib/read";
 import { useNow } from "../../../../../lib/useNow";
-import { Ident, StateNote, Status, Technical } from "../../../../components/bits";
+import { Dot, Ident, StateNote, Status, Technical } from "../../../../components/bits";
 import { triggerSentence } from "../../../../components/PolicyRow";
-import { InsuredArea, ThresholdScale, type ScaleNode } from "../../../../components/ThresholdScale";
+import { ThresholdScale, type ScaleNode } from "../../../../components/ThresholdScale";
 
 type Load<T> = { state: "loading" } | { state: "ok"; data: T } | { state: "down"; why: string };
 
 type Record3 = { policy: Policy | null; decision: Decision | null; pkg: ClaimPackage | null };
 
+/** What a publisher IS. This is what the face shows; the host it publishes
+ *  from is plumbing and lives in the fold. */
 const KIND_WORDS: Record<string, string> = {
   METEOROLOGICAL_AGENCY: "meteorological agency",
   WEATHER_PROVIDER: "weather provider",
@@ -159,8 +159,9 @@ export default function InvestigationPage({
   const p = data?.policy ?? null;
   const decision = data?.decision ?? null;
 
-  /* One node per source, placed at its reading. Class and usability decide
-     the node's kind; nothing here averages, weights or ranks anything. */
+  /* One node per source, placed at its reading, tagged with the source's
+     agreed name — never its host. Class and usability decide the node's kind;
+     nothing here averages, weights or ranks anything. */
   const nodes = useMemo<ScaleNode[]>(() => {
     if (!decision) return [];
     return decision.rows.map((r) => {
@@ -170,7 +171,7 @@ export default function InvestigationPage({
           ? meetsThreshold(decision.operator, r.reading, decision.threshold)
           : false;
       return {
-        publisher: r.domain,
+        publisher: r.label || KIND_WORDS[r.kind] || "source",
         reading: r.reading,
         party: r.cls === "PARTY",
         qualifying: counted && meets,
@@ -190,8 +191,8 @@ export default function InvestigationPage({
     return (
       <main className="page">
         <StateNote kind="unreachable">
-          This round could not be read. This is the network between you and the contract,
-          not the record itself.{" "}
+          This round could not be read — the network between you and the contract, not the
+          record itself.{" "}
           <Link href={`/policies/${id}`} className="ghost">
             Back to the policy
           </Link>
@@ -217,33 +218,38 @@ export default function InvestigationPage({
   const versions = Array.from({ length: Math.max(0, p.evidence_version) }, (_, i) => i + 1);
   const rounds =
     versions.length === 0 ? null : (
-      <nav className="tabs" aria-label="Rounds of this policy">
-        <span className="control-label" style={{ marginRight: 8 }}>
-          Rounds
-        </span>
-        {versions.map((n) => (
-          <Link
-            key={n}
-            href={`/policies/${id}/investigation/${n}`}
-            className={n === ver ? "tab on" : "tab"}
-            aria-current={n === ver ? "page" : undefined}
-          >
-            {n === ver ? `Version ${n}, shown` : `Version ${n}`}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--gap-air)",
+          flexWrap: "wrap",
+        }}
+      >
+        <span className="eyebrow">Rounds</span>
+        <nav className="tabs" aria-label="Rounds of this policy">
+          {versions.map((n) => (
+            <Link
+              key={n}
+              href={`/policies/${id}/investigation/${n}`}
+              className={n === ver ? "tab on" : "tab"}
+              aria-current={n === ver ? "page" : undefined}
+            >
+              Version {n}
+            </Link>
+          ))}
+          <Link href={`/policies/${id}`} className="tab">
+            The policy
           </Link>
-        ))}
-        <Link href={`/policies/${id}`} className="tab" style={{ marginLeft: "auto" }}>
-          The policy
-        </Link>
-      </nav>
+        </nav>
+      </div>
     );
 
-  const head = (
-    <header>
-      <Link
-        href={`/policies/${id}`}
-        className="eyebrow"
-        style={{ display: "inline-block", marginBottom: "var(--gap-tight)" }}
-      >
+  /* The page's opening block: back-link, title, the ONE sentence, and the
+     policy's facts as chips rather than as a sub-paragraph. */
+  const head = (lede: string) => (
+    <header className="pagehead">
+      <Link href={`/policies/${id}`} className="eyebrow">
         ← {p.title}
       </Link>
       <h1 className="heading-sm">
@@ -253,10 +259,16 @@ export default function InvestigationPage({
             : `Investigation of claim version ${decision.evidence_version}`
           : `Claim version ${Number.isInteger(ver) && ver >= 1 ? ver : v}`}
       </h1>
-      <p className="detail-sub">
-        {triggerSentence(p)} · {p.region}, {p.country}
-        {decision ? <> · observed {formatWhen(decision.observed_epoch, now)}</> : null}
-      </p>
+      <p className="lede-line">{lede}</p>
+      <div className="chiprow">
+        <span className="chip">{triggerSentence(p)}</span>
+        <span className="chip">
+          {p.region}, {p.country}
+        </span>
+        {decision ? (
+          <span className="chip">observed {formatStamp(decision.observed_epoch)}</span>
+        ) : null}
+      </div>
     </header>
   );
 
@@ -270,55 +282,63 @@ export default function InvestigationPage({
       !Number.isInteger(ver) || ver < 1
         ? `There is no version “${v}” of this policy's evidence: versions are counted from one.`
         : p.evidence_version === 0
-          ? "No claim has been filed on this policy, so no version of its evidence exists and no panel has been asked anything."
+          ? "No claim has been filed on this policy, so no panel has been asked anything."
           : ver > p.evidence_version
-            ? `This policy's evidence reaches version ${p.evidence_version}. Version ${ver} has not been filed.`
-            : `No investigation was recorded at version ${ver} of this policy's evidence. The claim exists; no panel has read it.`;
+            ? `Version ${ver} has not been filed: this policy's evidence reaches version ${p.evidence_version}.`
+            : `The claim at version ${ver} exists, but no panel has read it yet.`;
 
     return (
       <main className="page">
-        {head}
-
-        <StateNote kind="empty">
-          {missing}{" "}
-          <Link href={`/policies/${id}`} className="ghost">
-            Back to the policy
-          </Link>
-          .
-        </StateNote>
+        {head(missing)}
 
         <section>
-          <span className="eyebrow">What appears here when the round runs</span>
-          <p className="body muted measure" style={{ marginTop: "var(--gap-tight)" }}>
-            Anyone may run the investigation — it is not the policyholder&apos;s to withhold
-            or the insurer&apos;s to stall. When someone does, every validator fetches each
-            named page itself, states what that page says about the insured area over a
-            window of the agreed length, and this page fills with the result: the question
-            they were asked, each publisher&apos;s reading placed against{" "}
-            <span className="figure">
-              {p.threshold} {p.unit}
-            </span>
-            , the count that derived the outcome, and the panel&apos;s own reason.
-          </p>
+          <div className="section-head">
+            <span className="eyebrow">What the round will answer</span>
+          </div>
+          <div className="pairs">
+            <div className="pair">
+              <span className="pair-label">Who may run it</span>
+              <span className="pair-value">anyone</span>
+              <span className="pair-note">
+                not the policyholder&apos;s to withhold, nor the insurer&apos;s to stall
+              </span>
+            </div>
+            <div className="pair">
+              <span className="pair-label">Threshold</span>
+              <span className="pair-value lg">
+                {p.threshold}
+                <span className="unit">{p.unit}</span>
+              </span>
+            </div>
+            <div className="pair">
+              <span className="pair-label">Publishers required</span>
+              <span className="pair-value lg">{p.min_independent}</span>
+            </div>
+          </div>
         </section>
 
         {pkg ? (
           <section>
-            <span className="eyebrow">
-              The claim filed at version {pkg.version} · {pkg.rows.length}{" "}
-              {pkg.rows.length === 1 ? "source" : "sources"} named
-            </span>
-            <p className="body muted" style={{ marginTop: "var(--gap-tight)" }}>
-              The event window ran {formatStamp(pkg.event_start_epoch)} to{" "}
-              {formatStamp(pkg.event_end_epoch)}. These are the pages the panel will be
-              sent to, and no others.
-            </p>
+            <div className="section-head">
+              <span className="eyebrow">The claim filed at version {pkg.version}</span>
+            </div>
+            <div className="pairs">
+              <div className="pair">
+                <span className="pair-label">Event window</span>
+                <span className="pair-value sm">{formatStamp(pkg.event_start_epoch)}</span>
+                <span className="pair-note">to {formatStamp(pkg.event_end_epoch)}</span>
+              </div>
+              <div className="pair">
+                <span className="pair-label">Pages the panel may read</span>
+                <span className="pair-value lg">{pkg.rows.length}</span>
+                <span className="pair-note">and no others</span>
+              </div>
+            </div>
             <div className="tablewrap" style={{ marginTop: "var(--gap-section)" }}>
               <table className="rows">
                 <thead>
                   <tr>
                     <th>Source</th>
-                    <th>Publisher</th>
                     <th>Agreed kind</th>
                     <th>Class</th>
                   </tr>
@@ -327,20 +347,30 @@ export default function InvestigationPage({
                   {pkg.rows.map((r) => (
                     <tr key={r.id}>
                       <td>{r.label}</td>
-                      <td>
-                        <span className="ident">{r.domain}</span>
-                      </td>
-                      <td className="body-sm muted">
-                        {KIND_WORDS[r.kind] ?? r.kind.toLowerCase()}
-                      </td>
-                      <td className="body-sm">
-                        {r.cls === "INDEPENDENT" ? "independent" : "a party's own"}
-                      </td>
+                      <td>{KIND_WORDS[r.kind] ?? r.kind.toLowerCase()}</td>
+                      <td>{r.cls === "INDEPENDENT" ? "independent" : "a party's own"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {/* the pages themselves: machine values, so a fold */}
+            <Technical
+              summary="The pages named, in full"
+              rows={pkg.rows.map((r, i): [string, React.ReactNode] => [
+                `${i + 1} · ${r.label}`,
+                <a
+                  key={r.id}
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mono"
+                  style={{ color: "var(--iris)" }}
+                >
+                  {r.url}
+                </a>,
+              ])}
+            />
           </section>
         ) : null}
 
@@ -366,17 +396,12 @@ export default function InvestigationPage({
      than inventing a time for it. */
   const stages: Array<{ stage: React.ReactNode; when?: string }> = [
     {
-      stage: "The event window the claim named, and the only period any reading may be for",
+      stage: "The event window the claim named, the only period a reading may be for",
       when: `${formatStamp(decision.event_start_epoch)} to ${formatStamp(decision.event_end_epoch)}`,
     },
     {
-      stage: `Every validator fetched the ${rows.length} named ${
-        rows.length === 1 ? "source" : "sources"
-      } itself — ${readable} of them came back readable`,
+      stage: "Every validator fetched the named pages itself",
       when: fetchedAt > 0 ? formatWhen(fetchedAt, now) : formatStamp(0),
-    },
-    {
-      stage: `Each page was asked what it states, and ${withReading} of ${rows.length} stated a figure the round could use`,
     },
     {
       stage: (
@@ -384,14 +409,13 @@ export default function InvestigationPage({
           Deterministic code counted the publishers against{" "}
           <span className="figure">
             {decision.threshold} {decision.unit}
-          </span>{" "}
-          and derived {out.label} — no validator chose it
+          </span>
         </>
       ),
       when: formatWhen(decision.observed_epoch, now),
     },
     {
-      stage: "The finality window: the record assigns nothing until it has passed",
+      stage: "The finality window — the record assigns nothing until it has passed",
       when: isPending
         ? formatWhen(p.pending_until_epoch, now)
         : isJudged && p.final_epoch > 0
@@ -399,7 +423,7 @@ export default function InvestigationPage({
           : `${formatSpan(p.finality_window)} from the record being written`,
     },
     {
-      stage: "The appeal window: either party may appeal on a bond, with one new source",
+      stage: "The appeal window — either party, on a bond, with one new source",
       when:
         isJudged && p.appeal_until_epoch > 0
           ? formatWhen(p.appeal_until_epoch, now)
@@ -409,45 +433,97 @@ export default function InvestigationPage({
 
   return (
     <main className="page">
-      {head}
+      {/* The lede may only claim what EVERY round does. "Every validator
+          fetched each named page itself" is false the moment a round is
+          re-heard: a RECORDED row is read from the stored bytes and nothing
+          is refetched. What is true of every round is the arithmetic — code
+          counts publishers and never averages them. */}
+      {head(
+        "Deterministic code counts the publishers and derives the outcome — it never averages them.",
+      )}
 
       {/* the thesis: what the panel was actually asked, verbatim */}
       <section>
-        <span className="eyebrow">The question the panel was asked</span>
-        <p className="question" style={{ marginTop: "var(--gap-tight)" }}>
-          {decision.question}
+        <div className="section-head">
+          <span className="eyebrow">The question the panel was asked</span>
+        </div>
+        {/* The contract stores this question with the machine values baked
+            into the string: "within 50 km of latitude 11.5, longitude 125.5"
+            and "between epoch 1788819222 and epoch 1788905622". Printed
+            verbatim it put coordinates and epochs in the largest text on the
+            page. The same question is asked here in the terms a reader holds;
+            the contract's exact wording stays one fold away, because it is
+            what the panel actually received. */}
+        <p className="question">
+          Did {triggerSentence(p)} occur in {p.region}, {p.country}
+          {p.radius_km > 0 ? ` (within ${p.radius_km} km)` : ""} between{" "}
+          {formatWhen(decision.event_start_epoch, now)} and{" "}
+          {formatWhen(decision.event_end_epoch, now)}?
         </p>
-        <p className="body-sm muted measure" style={{ marginTop: "var(--gap-tight)" }}>
-          Every validator answered this independently, from pages it fetched itself. None of
-          them was asked whether the trigger was met, or what anyone is owed.
-        </p>
+        <Technical
+          summary="The question as the contract stored it"
+          rows={[["question", decision.question]]}
+        />
+        <div className="pairs two" style={{ marginTop: "var(--gap-section)" }}>
+          <div className="pair">
+            <span className="pair-label">Answered by</span>
+            <span className="pair-value sm">
+              every validator independently, from pages it fetched itself
+            </span>
+          </div>
+          <div className="pair">
+            <span className="pair-label">Not asked</span>
+            <span className="pair-value sm">
+              whether the trigger was met, or what anyone is owed
+            </span>
+          </div>
+        </div>
       </section>
 
-      {/* the determination, drawn */}
+      {/* the determination, drawn — the count, never an average */}
       <section>
-        <span className="eyebrow">The determination</span>
-        <ThresholdScale
-          nodes={nodes}
-          threshold={decision.threshold}
-          unit={decision.unit}
-          operator={decision.operator}
-        />
-        <p className="body" style={{ marginTop: "var(--gap-section)" }}>
-          {decision.publishers} independent{" "}
-          {decision.publishers === 1 ? "publisher" : "publishers"} spoke;{" "}
-          {decision.qualifying} of them past the threshold, {decision.contradicting} short
-          of it. The policy required {decision.min_independent} to speak at all.
-        </p>
-        <div className="determination">
-          <Status state={out.state} label={out.label} />
-          {decision.hold_reason ? (
-            <span className="muted">{HOLD_WORDS[decision.hold_reason] ?? "the record is on hold"}</span>
-          ) : (
-            <span className="muted">
-              derived from the count above, not from any validator&apos;s opinion
-            </span>
-          )}
+        <div className="section-head">
+          <span className="eyebrow">The determination</span>
         </div>
+
+        <div className="card lifted">
+          <div className="verdict">
+            <Dot state={out.state} />
+            {out.label}
+          </div>
+          <p className="pair-note" style={{ marginTop: 12 }}>
+            {decision.hold_reason
+              ? (HOLD_WORDS[decision.hold_reason] ?? "the record is on hold")
+              : "derived from the count below, chosen by no validator"}
+          </p>
+          <div className="pairs three" style={{ marginTop: "var(--gap-section)" }}>
+            <div className="pair">
+              <span className="pair-label">Independent publishers</span>
+              <span className="count">
+                <span className="big-figure">{decision.publishers}</span>
+                <span className="of">of {decision.min_independent} required</span>
+              </span>
+            </div>
+            <div className="pair">
+              <span className="pair-label">Past the threshold</span>
+              <span className="big-figure">{decision.qualifying}</span>
+            </div>
+            <div className="pair">
+              <span className="pair-label">Short of it</span>
+              <span className="big-figure">{decision.contradicting}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: "var(--gap-section)" }}>
+          <ThresholdScale
+            nodes={nodes}
+            threshold={decision.threshold}
+            unit={decision.unit}
+            operator={decision.operator}
+          />
+        </div>
+
         {p.radius_km > 0 ? (
           <div
             style={{
@@ -458,20 +534,45 @@ export default function InvestigationPage({
               marginTop: "var(--gap-section)",
             }}
           >
-            <InsuredArea latE6={p.lat_e6} lonE6={p.lon_e6} radiusKm={p.radius_km} />
-            <p className="body-sm muted" style={{ maxWidth: "42ch" }}>
-              Every reading had to be for this area — {p.region}, {p.country}, inside{" "}
-              {p.radius_km} km of the plotted point. A page reporting the right figure for
-              somewhere else is not a reading of this event.
-            </p>
+            {/* The plot is the area drawn; its caption names the place. The
+                coordinates that produced it are a machine value and sit in
+                the fold beside it. */}
+            <div
+              className="area"
+              role="img"
+              aria-label={`Insured area: ${p.radius_km} km around ${p.region}, ${p.country}`}
+            >
+              <span className="area-chip">{p.radius_km} km</span>
+            </div>
+            <div style={{ minWidth: 0, flex: "1 1 260px" }}>
+              <div className="pair">
+                <span className="pair-label">Every reading had to be for</span>
+                <span className="pair-value lg">
+                  {p.region}, {p.country}
+                </span>
+                <span className="pair-note">
+                  within {p.radius_km} km of the plotted point
+                </span>
+              </div>
+              <Technical
+                summary="The plotted point"
+                rows={[
+                  ["latitude", (p.lat_e6 / 1_000_000).toFixed(4)],
+                  ["longitude", (p.lon_e6 / 1_000_000).toFixed(4)],
+                  ["radius", `${p.radius_km} km`],
+                ]}
+              />
+            </div>
           </div>
         ) : null}
       </section>
 
       {/* the round, in the order it happened */}
       <section>
-        <span className="eyebrow">The round, stage by stage</span>
-        <ol className="timeline" style={{ marginTop: "var(--gap-tight)" }}>
+        <div className="section-head">
+          <span className="eyebrow">The round, stage by stage</span>
+        </div>
+        <ol className="timeline">
           {stages.map((s, i) => (
             <li key={i}>
               <div>
@@ -485,12 +586,28 @@ export default function InvestigationPage({
 
       {/* every source the count was made of */}
       <section>
-        <span className="eyebrow">The evidence, source by source</span>
-        <p className="body-sm muted measure" style={{ marginTop: "var(--gap-tight)" }}>
-          Each publisher speaks once, at its least trigger-favourable page. Two pages on one
-          publisher are one voice, and a party&apos;s own instrument is shown here and never
-          counted.
-        </p>
+        <div className="section-head">
+          <span className="eyebrow">The evidence, source by source</span>
+        </div>
+        <div className="pairs">
+          <div className="pair">
+            <span className="pair-label">Sources named</span>
+            <span className="pair-value lg">{rows.length}</span>
+          </div>
+          <div className="pair">
+            <span className="pair-label">Came back readable</span>
+            <span className="pair-value lg">{readable}</span>
+          </div>
+          <div className="pair">
+            <span className="pair-label">Stated a usable figure</span>
+            <span className="pair-value lg">{withReading}</span>
+          </div>
+          <div className="pair">
+            <span className="pair-label">One voice per publisher</span>
+            <span className="pair-value sm">its least trigger-favourable page</span>
+          </div>
+        </div>
+
         <div className="sources" style={{ marginTop: "var(--gap-section)" }}>
           {rows.map((r) => {
             const counted = r.cls === "INDEPENDENT" && usable(r) && r.reading !== null;
@@ -498,22 +615,54 @@ export default function InvestigationPage({
               counted && r.reading !== null
                 ? meetsThreshold(decision.operator, r.reading, decision.threshold)
                 : false;
+            /* Every machine value this source has. The host it publishes
+               from is one of them: the face says what the publisher IS. */
+            const tech: Array<[string, React.ReactNode]> = [
+              ["publisher", r.domain],
+              [
+                "page",
+                <a
+                  key="u"
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mono"
+                  style={{ color: "var(--iris)" }}
+                >
+                  {r.url}
+                </a>,
+              ],
+              ["digest", <Ident key="d" value={r.digest} label="Copy digest" />],
+              ["fetched", formatStamp(r.fetch_epoch)],
+              ["added at version", String(r.added_version)],
+            ];
+            if (r.basis === "RECORDED") {
+              tech.push(["recorded at round", String(r.basis_round)]);
+            }
             return (
               <article className="source" key={r.id}>
                 <div className="source-head">
-                  <div style={{ minWidth: 0 }}>
+                  <div className="fact" style={{ minWidth: 0 }}>
                     <h2 className="source-title">{r.label}</h2>
-                    <p className="body-sm" style={{ marginTop: 6 }}>
-                      <span className="ident">{r.domain}</span>
-                    </p>
+                    <span className="fact-qual">
+                      {KIND_WORDS[r.kind] ?? r.kind.toLowerCase()}
+                    </span>
                   </div>
                   <div className="source-figure">
-                    <div className="source-reading">
-                      {r.reading === null
-                        ? "states no usable reading"
-                        : `states ${r.reading} ${decision.unit}`}
+                    <div className="pair-label" style={{ marginBottom: 8 }}>
+                      Reading
                     </div>
-                    <div style={{ marginTop: 8, display: "inline-flex" }}>
+                    <div className="source-reading">
+                      {r.reading === null ? (
+                        "none usable"
+                      ) : (
+                        <>
+                          {r.reading}
+                          <span className="unit">{decision.unit}</span>
+                        </>
+                      )}
+                    </div>
+                    <div style={{ marginTop: 10, display: "inline-flex" }}>
                       {counted ? (
                         <Status
                           state={meets ? "qualifying" : "contradicting"}
@@ -528,33 +677,27 @@ export default function InvestigationPage({
                   </div>
                 </div>
 
+                {/* Provenance as one word, not a paragraph: RECORDED bytes are
+                    compared verbatim between nodes, a FETCHED passage is the
+                    leader's record. The fold under the excerpt says which
+                    part of that every validator actually agreed. */}
                 <div className="source-chips">
-                  <span className="badge">{KIND_WORDS[r.kind] ?? r.kind.toLowerCase()}</span>
-                  <span className="badge">
+                  <span className={r.basis === "RECORDED" ? "tag recorded" : "tag fetched"}>
+                    {r.basis === "RECORDED" ? "recorded" : "fetched"}
+                  </span>
+                  <span className="chip">
                     {r.cls === "INDEPENDENT" ? "independent" : "a party's own"}
                   </span>
-                  <span className="badge">
-                    {r.basis === "RECORDED"
-                      ? `recorded at round ${r.basis_round}, re-read from those bytes`
-                      : r.basis === "NEW"
-                        ? "added by the appellant"
-                        : "fetched this round"}
-                  </span>
-                  <span className="badge">
-                    {r.readable ? "the page was read" : "the page could not be read"}
-                  </span>
+                  {r.basis === "NEW" ? <span className="chip">added by the appellant</span> : null}
+                  {!r.readable ? <span className="chip">the page could not be read</span> : null}
                 </div>
 
                 {/* The three checks are the panel's findings ABOUT a page it
                     read. A page that could not be read was never assessed, so
-                    the booleans that come back for it are defaults, not
-                    findings — the contract itself takes this line, forcing
-                    `reading = None` for an unreadable row on the grounds that
-                    "an unreadable page states nothing, whatever the model says
-                    about it". Rendering them anyway put three specific
-                    accusations against a page that merely 404'd: that it was
-                    outside the window, outside the insured area, and not what
-                    its label said. None of that was determined. */}
+                    its booleans are defaults, not findings — the contract
+                    takes the same line, forcing `reading = None` for an
+                    unreadable row. Rendering them anyway put three specific
+                    accusations against a page that merely 404'd. */}
                 {r.readable ? (
                   <ul className="checks">
                     <li className={r.window_ok ? undefined : "flag"}>
@@ -570,31 +713,28 @@ export default function InvestigationPage({
                     </li>
                   </ul>
                 ) : (
-                  <p className="body-sm muted" style={{ marginTop: 10 }}>
-                    Nothing was assessed about this page: it did not come back, so the
-                    panel had no content to judge its window, its area or its kind
-                    against.
-                  </p>
+                  <div className="pair" style={{ marginTop: "var(--gap-tight)" }}>
+                    <span className="pair-label">Not assessed</span>
+                    <span className="pair-value sm">window · insured area · kind</span>
+                  </div>
                 )}
 
-                {/* What consensus does and does not cover here, said plainly.
-                    For a row fetched THIS round, every validator agreed the
-                    reading and the three checks against its own fetch, and an
-                    INDEPENDENT row's reading must match exactly or the round
-                    is refused. The passage itself is different: validators
-                    check that the leader's digest covers the bytes the leader
-                    stored, not that those bytes match what they fetched. So
-                    the excerpt is the record's, sealed and re-checkable, but
-                    it is not itself corroborated — and calling it "the
-                    passage the panel read" claimed a agreement the protocol
-                    does not make. A RECORDED row IS compared verbatim between
-                    nodes, because both are reading the same stored bytes. */}
+                {/* What consensus does and does not cover here. For a row
+                    fetched THIS round, every validator agreed the reading
+                    against its own fetch, and an INDEPENDENT row's reading
+                    must match exactly or the round is refused. The passage is
+                    different: validators check that the leader's digest covers
+                    the bytes the leader stored, not that those bytes match
+                    what they fetched — so it is sealed and re-checkable, but
+                    not itself corroborated. A RECORDED row IS compared
+                    verbatim between nodes, because both read the same stored
+                    bytes. */}
                 {r.excerpt ? (
                   <details className="technical">
                     <summary>
                       {r.basis === "RECORDED"
-                        ? "The stored passage, read identically by every validator"
-                        : "The passage the leader recorded, sealed by its digest"}
+                        ? "The stored passage"
+                        : "The passage the leader recorded"}
                     </summary>
                     <p
                       className="body-sm"
@@ -602,37 +742,47 @@ export default function InvestigationPage({
                     >
                       {r.excerpt}
                     </p>
-                    {r.basis !== "RECORDED" ? (
-                      <p className="caption muted" style={{ marginTop: 10 }}>
-                        The reading taken from this page was agreed by every validator against
-                        its own fetch. This passage is the leader&apos;s record of what it
-                        read, fixed by the digest above so a later panel reads the same bytes.
-                      </p>
-                    ) : null}
+                    {r.basis === "RECORDED" ? (
+                      <div className="pair-row">
+                        <span className="pair-label">Compared verbatim</span>
+                        <span className="pair-value">
+                          by every validator, from these same bytes
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Only an INDEPENDENT row's reading is agreed exactly.
+                            The validator compares reading, window_ok, geo_ok
+                            and kind_matches against its OWN fetch and refuses
+                            the round on any mismatch — but only for that
+                            class. A PARTY row's reading is explicitly left
+                            free ("party rows inform only"), so claiming
+                            consensus over it would be false. */}
+                        {r.cls === "INDEPENDENT" ? (
+                          <div className="pair-row">
+                            <span className="pair-label">Agreed by every validator</span>
+                            <span className="pair-value">the reading, each against its own fetch</span>
+                          </div>
+                        ) : (
+                          <div className="pair-row">
+                            <span className="pair-label">Not agreed</span>
+                            <span className="pair-value">
+                              a party&apos;s own source informs the panel and never counts
+                            </span>
+                          </div>
+                        )}
+                        <div className="pair-row">
+                          <span className="pair-label">Not corroborated</span>
+                          <span className="pair-value">
+                            this passage — the leader&apos;s record, sealed by the digest
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </details>
                 ) : null}
 
-                <Technical
-                  summary="Technical record of this source"
-                  rows={[
-                    [
-                      "page",
-                      <a
-                        key="u"
-                        href={r.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mono"
-                        style={{ color: "var(--iris)" }}
-                      >
-                        {r.url}
-                      </a>,
-                    ],
-                    ["digest", <Ident key="d" value={r.digest} label="Copy digest" />],
-                    ["fetched", formatStamp(r.fetch_epoch)],
-                    ["added at version", String(r.added_version)],
-                  ]}
-                />
+                <Technical summary="Technical record of this source" rows={tech} />
               </article>
             );
           })}
@@ -641,15 +791,17 @@ export default function InvestigationPage({
 
       {/* the panel's own words */}
       <section>
-        <span className="eyebrow">The panel&apos;s reason</span>
-        <blockquote className="reason" style={{ marginTop: "var(--gap-tight)" }}>
-          {decision.reason}
-        </blockquote>
+        <div className="section-head">
+          <span className="eyebrow">The panel&apos;s reason</span>
+        </div>
+        <blockquote className="reason">{decision.reason}</blockquote>
         {decision.conflicts.length > 0 ? (
-          <p className="body-sm" style={{ marginTop: "var(--gap-section)" }}>
-            The panel also noted:{" "}
-            {decision.conflicts.map((c) => CONFLICT_WORDS[c] ?? c.toLowerCase()).join("; ")}.
-          </p>
+          <div className="pair" style={{ marginTop: "var(--gap-section)" }}>
+            <span className="pair-label">Also noted</span>
+            <span className="pair-value sm">
+              {decision.conflicts.map((c) => CONFLICT_WORDS[c] ?? c.toLowerCase()).join("; ")}
+            </span>
+          </div>
         ) : null}
         <Technical
           rows={[

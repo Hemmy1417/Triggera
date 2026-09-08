@@ -11,7 +11,7 @@ import {
   type Decision,
   type Policy,
 } from "../../../lib/read";
-import { Ident, StateNote, Status, Technical } from "../../components/bits";
+import { Dot, Ident, StateNote, Status, Technical } from "../../components/bits";
 import { triggerSentence } from "../../components/PolicyRow";
 import { explorerAddress } from "../../components/Shell";
 
@@ -20,16 +20,28 @@ type Load<T> = { state: "loading" } | { state: "ok"; data: T } | { state: "down"
 const TABS = ["Trigger", "Evidence", "Determination", "Settlement"] as const;
 type Tab = (typeof TABS)[number];
 
+/* What an origin IS, in the words both parties agreed to. The KIND is the
+   fact a reader came for; the hostname behind it is plumbing and lives in
+   the technical fold. */
 const KIND_WORDS: Record<string, string> = {
-  METEOROLOGICAL_AGENCY: "meteorological agency",
-  WEATHER_PROVIDER: "weather provider",
-  SEISMIC_NETWORK: "seismic network",
-  SATELLITE_OBSERVATION: "satellite observation",
-  GOVERNMENT_RECORD: "government record",
-  NEWS_REPORT: "news report",
-  STATION_LOG: "station log",
-  OTHER: "other",
+  METEOROLOGICAL_AGENCY: "Meteorological agency",
+  WEATHER_PROVIDER: "Weather provider",
+  SEISMIC_NETWORK: "Seismic network",
+  SATELLITE_OBSERVATION: "Satellite observation",
+  GOVERNMENT_RECORD: "Government record",
+  NEWS_REPORT: "News report",
+  STATION_LOG: "Station log",
+  OTHER: "Other",
 };
+
+function kindWords(kind: string): string {
+  const known = KIND_WORDS[kind];
+  if (known) return known;
+  const s = kind.toLowerCase().replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const classWords = (cls: string) => (cls === "INDEPENDENT" ? "Independent" : "A party's own");
 
 const HOLD_WORDS: Record<string, string> = {
   EVIDENCE_INSUFFICIENT: "the record does not establish what the metric did in the insured area",
@@ -52,6 +64,21 @@ function outcomeWords(o: string): { state: string; label: string } {
   if (o === "NOT_SATISFIED") return { state: "not-satisfied", label: "trigger not met" };
   if (o === "UNDETERMINED") return { state: "undetermined", label: "undetermined" };
   return { state: "draft", label: "not yet determined" };
+}
+
+function windowWords(hours: number): string {
+  if (hours % 24 === 0 && hours >= 24) {
+    const d = hours / 24;
+    return d === 1 ? "24 hours" : `${d} days`;
+  }
+  return `${hours} hours`;
+}
+
+/** Where the policy applies, as a place a person recognises. The coordinates
+ *  that produced it are a machine value and belong in the fold. */
+function placeWords(p: Policy): string {
+  const where = `${p.region}, ${p.country}`;
+  return p.radius_km > 0 ? `${where} · ${p.radius_km} km` : where;
 }
 
 export default function PolicyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -108,13 +135,26 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
       <main className="page">
         <StateNote kind="empty">
           No policy with this identifier exists on the contract.{" "}
-          <Link href="/" className="ghost">Back to the book</Link>.
+          <Link href="/policies" className="ghost">Back to the book</Link>.
         </StateNote>
       </main>
     );
   }
 
-  const out = outcomeWords(p.outcome);
+  /* THE HEADLINE VERDICT IS GATED ON THE SAME TEST AS THE SETTLEMENT PANEL.
+   *
+   * The contract never clears p.outcome when a round ends without paying, so
+   * the moment a newer claim is filed the field still holds the PREVIOUS
+   * round's answer until promote() overwrites it. The settlement tab already
+   * refuses to speak in that gap; the headline must too, and it matters more
+   * here because this is the largest text on the page — announcing "trigger
+   * met" over a panel that is at this moment still reading would be the worst
+   * thing this page could say. Versions cannot go stale, so they are the
+   * test. */
+  const outcomeIsCurrent = Number(p.evidence_version) <= Number(p.judged_version);
+  const out = outcomeIsCurrent
+    ? outcomeWords(p.outcome)
+    : { state: "draft", label: "under investigation" };
   const publishers = (p.basis ?? []).filter((b) => b.class === "INDEPENDENT");
   const parties = (p.basis ?? []).filter((b) => b.class === "PARTY");
 
@@ -123,23 +163,26 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
       {/* the fact header: the trigger large, the determination beside it */}
       <header className="detail-head">
         <div style={{ minWidth: 0 }}>
-          <Link href="/" className="eyebrow" style={{ display: "inline-block", marginBottom: 12 }}>
+          <Link href="/policies" className="eyebrow" style={{ display: "inline-block", marginBottom: 12 }}>
             ← the policy book
           </Link>
           <h1 className="detail-trigger">{triggerSentence(p)}</h1>
           <p className="detail-sub">
-            {p.title} · {p.region}, {p.country} · measured over{" "}
-            {p.measurement_hours} hours
+            {p.title} · {p.region}, {p.country}
           </p>
         </div>
         <div className="detail-verdict">
-          <Status state={out.state} label={out.label} />
-          <div className="detail-coverage">
-            <span className="figure">{formatGen(p.coverage_atto)}</span>
-            <span className="muted"> GEN coverage</span>
-          </div>
-          <div className="caption muted">
-            {p.min_independent} of {publishers.length} publishers must agree
+          {/* the outcome, said once. UNDETERMINED is a peer of the other two. */}
+          <span className="verdict">
+            <Dot state={out.state} />
+            {out.label}
+          </span>
+          <div className="pair">
+            <span className="pair-label">Coverage</span>
+            <span className="pair-value lg">
+              {formatGen(p.coverage_atto)}
+              <span className="unit">GEN</span>
+            </span>
           </div>
         </div>
       </header>
@@ -161,63 +204,92 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
       {tab === "Trigger" && (
         <section className="grid two">
           <div className="card">
-            <span className="eyebrow">What pays</span>
-            <dl className="factlist">
-              <div>
-                <dt>The condition</dt>
-                <dd>{triggerSentence(p)}, over any {p.measurement_hours}-hour window inside the claimed event window.</dd>
+            <div className="card-head">
+              <span className="card-title">Terms</span>
+            </div>
+            <div className="pairs">
+              <div className="pair">
+                <span className="pair-label">Premium</span>
+                <span className="pair-value lg">
+                  {formatGen(p.premium_atto)}
+                  <span className="unit">GEN</span>
+                </span>
+                <span className="pair-note">the insurer&apos;s from activation</span>
               </div>
-              <div>
-                <dt>The insured area</dt>
-                <dd>
-                  {p.region}, {p.country}
-                  {p.radius_km > 0
-                    ? `, within ${p.radius_km} km of ${(p.lat_e6 / 1e6).toFixed(4)}, ${(p.lon_e6 / 1e6).toFixed(4)}`
-                    : ""}
-                </dd>
+              <div className="pair">
+                <span className="pair-label">Measured over</span>
+                <span className="pair-value lg">{windowWords(p.measurement_hours)}</span>
+                <span className="pair-note">any such window inside the claim</span>
               </div>
-              <div>
-                <dt>The period</dt>
-                <dd>
-                  {formatDate(p.coverage_start_epoch)} to {formatDate(p.coverage_end_epoch)}. A claim
-                  may be filed for {formatSpan(p.claim_grace)} after it ends; then the insurer may
-                  reclaim the coverage.
-                </dd>
+              <div className="pair wide">
+                <span className="pair-label">Period</span>
+                <span className="pair-value">
+                  {formatDate(p.coverage_start_epoch)} — {formatDate(p.coverage_end_epoch)}
+                </span>
+                <span className="pair-note">
+                  claims for {formatSpan(p.claim_grace)} after it ends
+                </span>
               </div>
-              <div>
-                <dt>The money</dt>
-                <dd>
-                  {formatGen(p.coverage_atto)} GEN coverage against a {formatGen(p.premium_atto)} GEN
-                  premium. A trigger met pays the whole coverage; the premium is the insurer&apos;s
-                  the moment the policy is activated.
-                </dd>
+              <div className="pair wide">
+                <span className="pair-label">Insured area</span>
+                {/* drawn, not spelled: the coordinates behind the plot are in the fold */}
+                <div className="area">
+                  <span className="area-chip">{placeWords(p)}</span>
+                </div>
               </div>
-            </dl>
+            </div>
+            <Technical
+              summary="Coordinates and windows"
+              rows={[
+                [
+                  "centre",
+                  `${(p.lat_e6 / 1e6).toFixed(4)}, ${(p.lon_e6 / 1e6).toFixed(4)}`,
+                ],
+                ["radius", `${p.radius_km} km`],
+                ["coverage start", String(p.coverage_start_epoch)],
+                ["coverage end", String(p.coverage_end_epoch)],
+                ["measurement window", `${p.measurement_hours} h`],
+                ["claim grace", formatSpan(p.claim_grace)],
+              ]}
+            />
           </div>
 
           <div className="card">
-            <span className="eyebrow">Where evidence may come from</span>
-            <p className="body-sm muted" style={{ marginTop: 12 }}>
-              Frozen when the policy was written and signed by the premium. The panel reads these
-              origins and no others. Kinds and classes are labels both parties agreed; the panel is
-              told so, and judges each page as what it shows itself to be.
-            </p>
+            <div className="card-head">
+              <span className="card-title">Evidence origins</span>
+              <span className="eyebrow">frozen at signing</span>
+            </div>
             <div className="basislist">
-              {(p.basis ?? []).map((b) => (
-                <div className="basisrow" key={b.origin}>
-                  <span className="ident">{b.origin}</span>
-                  <span className="caption muted">{KIND_WORDS[b.kind] ?? b.kind.toLowerCase()}</span>
-                  <span className="caption" style={{ color: b.class === "INDEPENDENT" ? "var(--bone)" : "var(--ash)" }}>
-                    {b.class === "INDEPENDENT" ? "independent" : "a party's own"}
-                  </span>
+              {(p.basis ?? []).map((b, i) => (
+                <div className="basisrow" key={`${b.origin}-${i}`}>
+                  <span className="basis-what">{kindWords(b.kind)}</span>
+                  <span className="chip">{classWords(b.class)}</span>
                 </div>
               ))}
             </div>
-            <p className="caption muted" style={{ marginTop: 16 }}>
-              {publishers.length} independent {publishers.length === 1 ? "publisher" : "publishers"}
-              {parties.length > 0 ? `, ${parties.length} party source` : ""}. Two pages on one
-              publisher are one voice.
+            {/* the page's one sentence. It carries two facts nothing else can:
+                the origin list is closed, and kind and class are AGREED labels
+                the panel tests rather than facts the app vouches for. */}
+            <p className="body-sm muted" style={{ marginTop: 24 }}>
+              These origins and no others, under the kinds and classes both parties agreed.
             </p>
+            <div className="pairs two" style={{ marginTop: 28 }}>
+              <div className="pair">
+                <span className="pair-label">Publishers required</span>
+                <span className="count">
+                  <span className="big-figure">{p.min_independent}</span>
+                  <span className="of">of {publishers.length}</span>
+                </span>
+                <span className="pair-note">one voice per publisher, counted and never averaged</span>
+              </div>
+              {parties.length > 0 ? (
+                <div className="pair">
+                  <span className="pair-label">Party sources</span>
+                  <span className="pair-value lg">{parties.length}</span>
+                  <span className="pair-note">informs, never counts</span>
+                </div>
+              ) : null}
+            </div>
             {p.terms_text ? (
               <details className="technical">
                 <summary>Read the policy text</summary>
@@ -228,6 +300,13 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
             ) : null}
             <Technical
               rows={[
+                ...(p.basis ?? []).map(
+                  (b, i) =>
+                    [
+                      `origin ${i + 1} · ${kindWords(b.kind).toLowerCase()}`,
+                      <Ident key={`${b.origin}-${i}`} value={b.origin} />,
+                    ] as [string, React.ReactNode],
+                ),
                 ["policy", <Ident key="i" value={p.policy_id} />],
                 ["commitment", <Ident key="h" value={p.terms_sha256} label="Copy hash" />],
                 ["insurer", <Ident key="a" value={p.insurer} />],
@@ -245,57 +324,55 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
       )}
 
       {tab === "Evidence" && (
-        <section className="card">
+        <section>
           {version === 0 ? (
-            <StateNote kind="empty">
-              No claim has been filed on this policy. Evidence appears here when the policyholder
-              names an event window and the pages to read.
-            </StateNote>
+            <div className="empty">No claim filed on this policy.</div>
           ) : !pkg ? (
-            <StateNote kind="loading">Reading the claim…</StateNote>
+            <div className="empty">Reading the claim…</div>
           ) : (
-            <>
-              <span className="eyebrow">
-                Claim, version {pkg.version} · filed by the {pkg.filed_by.replace(/^appellant:/, "appellant, ")}
-              </span>
-              <p className="body" style={{ marginTop: 12 }}>
-                The event window ran {formatDate(pkg.event_start_epoch)} to{" "}
-                {formatDate(pkg.event_end_epoch)}. The policyholder claims{" "}
-                <span className="figure">{pkg.claimed_reading}</span> {p.unit} — a claim, which the
-                panel never treats as a reading.
-              </p>
-              <div className="tablewrap" style={{ marginTop: 24 }}>
-                <table className="rows">
-                  <thead>
-                    <tr>
-                      <th>Source</th>
-                      <th>Publisher</th>
-                      <th>Agreed kind</th>
-                      <th>Class</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pkg.rows.map((r) => (
-                      <tr key={r.id}>
-                        <td>{r.label}</td>
-                        <td>
-                          <span className="ident">{r.domain}</span>
-                        </td>
-                        <td className="body-sm muted">{KIND_WORDS[r.kind] ?? r.kind.toLowerCase()}</td>
-                        <td className="body-sm">
-                          {r.cls === "INDEPENDENT" ? "independent" : "a party's own"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="card">
+              <div className="card-head">
+                <span className="card-title">Claim, version {pkg.version}</span>
+                <span className="eyebrow">
+                  filed by the {pkg.filed_by.replace(/^appellant:/, "appellant, ")}
+                </span>
+              </div>
+              <div className="pairs three">
+                <div className="pair">
+                  <span className="pair-label">Event window</span>
+                  <span className="pair-value">
+                    {formatDate(pkg.event_start_epoch)} — {formatDate(pkg.event_end_epoch)}
+                  </span>
+                </div>
+                <div className="pair">
+                  <span className="pair-label">Claimed reading</span>
+                  <span className="pair-value lg">
+                    {pkg.claimed_reading}
+                    <span className="unit">{p.unit}</span>
+                  </span>
+                  {/* the claim is never treated as a reading; the label says so */}
+                  <span className="pair-note">a claim, never a reading</span>
+                </div>
+                <div className="pair">
+                  <span className="pair-label">Sources named</span>
+                  <span className="pair-value lg">{pkg.rows.length}</span>
+                </div>
+              </div>
+              <div className="basislist" style={{ marginTop: 28 }}>
+                {pkg.rows.map((r) => (
+                  <div className="basisrow" key={r.id}>
+                    <span className="basis-what">{r.label}</span>
+                    <span className="chip">{kindWords(r.kind)}</span>
+                    <span className="chip">{classWords(r.cls)}</span>
+                  </div>
+                ))}
               </div>
               <Technical
                 rows={[
                   ...pkg.rows.map(
-                    (r) =>
+                    (r, i) =>
                       [
-                        r.id,
+                        `${i + 1}. ${r.label}`,
                         <a
                           key={r.id}
                           href={r.url}
@@ -314,65 +391,97 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
                   ],
                 ]}
               />
-            </>
+            </div>
           )}
         </section>
       )}
 
       {tab === "Determination" && (
-        <section>
+        <section className="stack loose">
           {!decision ? (
-            <StateNote kind="empty">
-              No determination has been recorded yet. When anyone runs the investigation, every
-              validator fetches each source itself and the record appears here.
-            </StateNote>
+            <div className="empty">No determination recorded yet.</div>
           ) : (
-            <div style={{ display: "grid", gap: 24 }}>
-              <div className="window">
-                <div className="window-bar">
-                  <i className="window-dot" style={{ background: "var(--iris)" }} />
-                  <span className="eyebrow">
+            <>
+              <div className="card lifted">
+                <div className="card-head">
+                  <span className="card-title">
                     {decision.round_kind === "RE_INVESTIGATION"
-                      ? `Re-investigation, reconsidering round ${decision.reconsidered_round}`
-                      : "Investigation"}{" "}
-                    · version {decision.evidence_version}
+                      ? `Re-investigation of round ${decision.reconsidered_round}`
+                      : "Investigation"}
                   </span>
+                  <span className="eyebrow">version {decision.evidence_version}</span>
                 </div>
-                <div className="window-body">
-                  <div style={{ fontFamily: "var(--sans)", fontSize: 15, marginBottom: 16 }}>
-                    {decision.question}
-                  </div>
-                  <div className="determination">
-                    <Status state={outcomeWords(decision.outcome).state} label={outcomeWords(decision.outcome).label} />
-                    <span className="muted">
-                      {decision.qualifying} of {decision.publishers} publishers read past the
-                      threshold, {decision.contradicting} short of it
-                    </span>
+                <div className="stack">
+                  <span className="verdict">
+                    <Dot state={outcomeWords(decision.outcome).state} />
+                    {outcomeWords(decision.outcome).label}
+                  </span>
+                  <div className="pairs three">
+                    <div className="pair">
+                      <span className="pair-label">Publishers past the threshold</span>
+                      <span className="count">
+                        <span className="big-figure">{decision.qualifying}</span>
+                        <span className="of">of {decision.publishers}</span>
+                      </span>
+                      {/* a count of publishers, never a mean of readings */}
+                      <span className="pair-note">counted, never averaged</span>
+                    </div>
+                    <div className="pair">
+                      <span className="pair-label">Short of it</span>
+                      <span className="pair-value lg">{decision.contradicting}</span>
+                    </div>
+                    <div className="pair">
+                      <span className="pair-label">Threshold</span>
+                      <span className="pair-value lg">
+                        {decision.threshold}
+                        <span className="unit">{decision.unit}</span>
+                      </span>
+                    </div>
                   </div>
                   {decision.hold_reason ? (
-                    <p style={{ fontFamily: "var(--sans)", marginTop: 12, color: "var(--bone)" }}>
-                      {HOLD_WORDS[decision.hold_reason] ?? decision.hold_reason}
-                    </p>
+                    <div className="tile">
+                      <span className="pair-label">On hold</span>
+                      <div className="pair-value sm" style={{ marginTop: 10 }}>
+                        {HOLD_WORDS[decision.hold_reason] ?? decision.hold_reason}
+                      </div>
+                    </div>
                   ) : null}
+                  {/* The contract bakes the machine values into this string:
+                      "within 50 km of latitude 11.5, longitude 125.5" and
+                      "between epoch 1788819222 and epoch 1788834227". Printed
+                      verbatim it put coordinates and epochs back on the face,
+                      which is the one thing this pass exists to stop. The
+                      question is asked here in the reader's terms; the
+                      contract's exact words stay one fold away, because they
+                      are what the panel actually received. */}
+                  <div className="tile quiet">
+                    <span className="pair-label">The question the panel answered</span>
+                    <div className="pair-value sm" style={{ marginTop: 10 }}>
+                      Did {triggerSentence(p)} occur in {placeWords(p)} over the claimed
+                      window?
+                    </div>
+                    <Technical
+                      summary="The question as the contract stored it"
+                      rows={[["question", decision.question]]}
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* the evidence explorer: every reading against the threshold */}
               <div className="card">
-                <span className="eyebrow">Why the record reads as it does</span>
-                <p className="body-sm muted" style={{ marginTop: 12 }}>
-                  Each publisher speaks once, at its least trigger-favourable page. The readings are
-                  never averaged: the determination is a count of publishers, not a mean.
-                </p>
-                <div className="tablewrap" style={{ marginTop: 24 }}>
+                <div className="card-head">
+                  <span className="card-title">Every source, read</span>
+                  <span className="eyebrow">one voice each, at its least favourable page</span>
+                </div>
+                <div className="tablewrap">
                   <table className="rows">
                     <thead>
                       <tr>
                         <th>Source</th>
-                        <th>Publisher</th>
                         <th className="num">Reading</th>
                         <th>Against {decision.threshold} {decision.unit}</th>
-                        <th>Read</th>
+                        <th>Provenance</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -391,19 +500,7 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
                           <tr key={r.id}>
                             <td>
                               {r.label}
-                              <div className="caption muted">
-                                {r.basis === "RECORDED"
-                                  ? `recorded at round ${r.basis_round}, re-read`
-                                  : r.basis === "NEW"
-                                    ? "added by the appellant"
-                                    : "fetched this round"}
-                              </div>
-                            </td>
-                            <td>
-                              <span className="ident">{r.domain}</span>
-                              <div className="caption muted">
-                                {r.cls === "INDEPENDENT" ? "independent" : "a party's own"}
-                              </div>
+                              <div className="caption muted">{classWords(r.cls).toLowerCase()}</div>
                             </td>
                             <td className="num">
                               {r.reading === null ? (
@@ -434,7 +531,31 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
                                 />
                               )}
                             </td>
-                            <td className="body-sm muted">{r.readable ? "read" : "unreachable"}</td>
+                            <td>
+                              {/* RECORDED was compared verbatim by every validator;
+                                  FETCHED is the leader's record, digest-sealed but
+                                  not corroborated. One word here, the whole
+                                  distinction in the fold below. */}
+                              {r.basis === "RECORDED" ? (
+                                <span
+                                  className="tag recorded"
+                                  title="compared verbatim by every validator"
+                                >
+                                  recorded · round {r.basis_round}
+                                </span>
+                              ) : r.basis === "NEW" ? (
+                                <span className="tag" title="added by the appellant this round">
+                                  new
+                                </span>
+                              ) : (
+                                <span
+                                  className="tag fetched"
+                                  title="the leader's record, digest-sealed but not corroborated"
+                                >
+                                  fetched
+                                </span>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
@@ -443,102 +564,158 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
                 </div>
 
                 {decision.conflicts.length > 0 && (
-                  <p className="body-sm" style={{ marginTop: 20 }}>
-                    The panel also noted:{" "}
-                    {decision.conflicts.map((c) => CONFLICT_WORDS[c] ?? c.toLowerCase()).join("; ")}.
-                  </p>
+                  <div className="tile" style={{ marginTop: 28 }}>
+                    <span className="pair-label">Also noted</span>
+                    <div className="pair-value sm" style={{ marginTop: 10 }}>
+                      {decision.conflicts.map((c) => CONFLICT_WORDS[c] ?? c.toLowerCase()).join("; ")}
+                    </div>
+                  </div>
                 )}
 
-                <blockquote className="reason" style={{ marginTop: 24 }}>
+                <blockquote className="reason" style={{ marginTop: 28 }}>
                   {decision.reason}
                 </blockquote>
 
                 <Technical
                   rows={[
+                    ["recorded", "compared verbatim by every validator"],
+                    ["fetched", "the leader's record, digest-sealed, not corroborated"],
                     ["determination", <Ident key="d" value={decision.decision_id} />],
                     ["evidence root", <Ident key="r" value={decision.evidence_root} label="Copy root" />],
                     ["observed", formatDate(decision.observed_epoch)],
                     ["sufficiency", decision.evidence_flag.toLowerCase()],
                     ["confidence", `${decision.score} of 100`],
+                    /* the publisher behind each source, and the digest every
+                       validator matched on. Both are machine values: they are
+                       reachable here and nowhere on the face. */
                     ...decision.rows.map(
-                      (r) => [`${r.id} digest`, <Ident key={r.id} value={r.digest} label="Copy digest" />] as [string, React.ReactNode],
+                      (r, i) =>
+                        [`${i + 1}. ${r.label}`, <Ident key={r.id} value={r.origin} />] as [
+                          string,
+                          React.ReactNode,
+                        ],
+                    ),
+                    ...decision.rows.map(
+                      (r, i) =>
+                        [
+                          `${i + 1}. digest`,
+                          <Ident key={`${r.id}-digest`} value={r.digest} label="Copy digest" />,
+                        ] as [string, React.ReactNode],
                     ),
                   ]}
                 />
               </div>
-            </div>
+            </>
           )}
         </section>
       )}
 
       {tab === "Settlement" && (
         <section className="card">
-          <span className="eyebrow">What moves, and when</span>
-          {p.status === "PAID" ? (
-            <p className="body" style={{ marginTop: 16 }}>
-              The trigger was met and the policy paid{" "}
-              <span className="figure">{formatGen(p.payout_atto)} GEN</span> — the whole coverage —
-              to the policyholder&apos;s ledger, claimable by them alone.
+          <div className="card-head">
+            <span className="card-title">Settlement</span>
+            <span className="eyebrow">{p.status.toLowerCase().replace(/_/g, " ")}</span>
+          </div>
+          <div className="stack">
+            {p.status === "PAID" ? (
+              <div className="pair">
+                <span className="pair-label">Paid to the policyholder</span>
+                <span className="pair-value lg">
+                  {formatGen(p.payout_atto)}
+                  <span className="unit">GEN</span>
+                </span>
+                <span className="pair-note">the whole coverage, claimable by them alone</span>
+              </div>
+            ) : p.status === "EXPIRED" ? (
+              <div className="pair">
+                <span className="pair-label">Returned to the insurer</span>
+                <span className="pair-value lg">
+                  {formatGen(p.refund_atto)}
+                  <span className="unit">GEN</span>
+                </span>
+                <span className="pair-note">
+                  the period and its grace passed with no trigger verified
+                </span>
+              </div>
+            ) : Number(p.evidence_version) > Number(p.judged_version) ? (
+              /* A recorded outcome is only the CURRENT word while no newer claim
+                 is waiting on a panel. The contract never clears p.outcome when
+                 a round ends without paying: promote() on UNDETERMINED sets
+                 status back to ACTIVE and leaves the outcome standing, and
+                 settle() on NOT_SATISFIED does the same. So once a fresh claim
+                 is filed, the fields below still hold the PREVIOUS round's
+                 verdict until the new one is promoted — and this panel would
+                 have announced "the trigger was not met" over a live
+                 investigation. Gate on the versions, which cannot go stale. */
+              <>
+                <div className="gate stale">
+                  A newer claim is on the record and has not been determined yet, so nothing here
+                  is settled.
+                </div>
+                <div className="pair">
+                  <span className="pair-label">Locked while the panel reads</span>
+                  <span className="pair-value lg">
+                    {formatGen(p.coverage_atto)}
+                    <span className="unit">GEN</span>
+                  </span>
+                </div>
+              </>
+            ) : p.outcome === "SATISFIED" ? (
+              <div className="pair">
+                <span className="pair-label">Moves to the policyholder</span>
+                <span className="pair-value lg">
+                  {formatGen(p.coverage_atto)}
+                  <span className="unit">GEN</span>
+                </span>
+                <span className="pair-note">
+                  the whole coverage, once the {formatSpan(p.appeal_window)} appeal window closes
+                </span>
+              </div>
+            ) : p.outcome === "NOT_SATISFIED" ? (
+              <div className="pair">
+                <span className="pair-label">Trigger not met</span>
+                <span className="pair-value lg">Nothing moves</span>
+                <span className="pair-note">
+                  coverage locked, the policy live for the rest of its period
+                </span>
+              </div>
+            ) : p.outcome === "UNDETERMINED" ? (
+              <div className="pair">
+                <span className="pair-label">Record on hold</span>
+                <span className="pair-value lg">Nothing moves</span>
+                <span className="pair-note">
+                  a better claim inside the {formatSpan(p.claim_grace)} grace; after it, the
+                  insurer&apos;s reclaim
+                </span>
+              </div>
+            ) : (
+              <div className="pair">
+                <span className="pair-label">Locked against this policy</span>
+                <span className="pair-value lg">
+                  {formatGen(p.coverage_atto)}
+                  <span className="unit">GEN</span>
+                </span>
+                <span className="pair-note">
+                  leaves only through a finalized trigger or the expiry reclaim
+                </span>
+              </div>
+            )}
+            {/* the boundaries above are display; the contract's own clock decides */}
+            <p className="caption muted">
+              Windows run on the consensus clock the contract fetches itself, so the boundaries
+              shown here may be minutes off.
             </p>
-          ) : p.status === "EXPIRED" ? (
-            <p className="body" style={{ marginTop: 16 }}>
-              The coverage period and its claim grace passed without a trigger being verified, so{" "}
-              <span className="figure">{formatGen(p.refund_atto)} GEN</span> returned to the
-              insurer. A trigger nobody could verify is not paid, and the money is not stranded.
-            </p>
-          ) : Number(p.evidence_version) > Number(p.judged_version) ? (
-            /* A recorded outcome is only the CURRENT word while no newer claim
-               is waiting on a panel. The contract never clears p.outcome when
-               a round ends without paying: promote() on UNDETERMINED sets
-               status back to ACTIVE and leaves the outcome standing, and
-               settle() on NOT_SATISFIED does the same. So once a fresh claim
-               is filed, the fields below still hold the PREVIOUS round's
-               verdict until the new one is promoted — and this panel would
-               have announced "the trigger was not met" over a live
-               investigation. Gate on the versions, which cannot go stale. */
-            <p className="body" style={{ marginTop: 16 }}>
-              A newer claim is on the record and has not been determined yet, so nothing
-              here is settled. The coverage of{" "}
-              <span className="figure">{formatGen(p.coverage_atto)} GEN</span> stays locked
-              while the panel reads.
-            </p>
-          ) : p.outcome === "SATISFIED" ? (
-            <p className="body" style={{ marginTop: 16 }}>
-              The trigger is met. After the appeal window closes, anyone may settle and the whole{" "}
-              <span className="figure">{formatGen(p.coverage_atto)} GEN</span> coverage moves to the
-              policyholder.
-            </p>
-          ) : p.outcome === "NOT_SATISFIED" ? (
-            <p className="body" style={{ marginTop: 16 }}>
-              The trigger was not met. Nothing moves: the coverage stays locked and the policy stays
-              live for the rest of its period.
-            </p>
-          ) : p.outcome === "UNDETERMINED" ? (
-            <p className="body" style={{ marginTop: 16 }}>
-              The record is on hold, so nothing moves. The policyholder may file a better claim
-              inside the grace; after it, the insurer may reclaim the coverage.
-            </p>
-          ) : (
-            <p className="body" style={{ marginTop: 16 }}>
-              Nothing has settled. The coverage of{" "}
-              <span className="figure">{formatGen(p.coverage_atto)} GEN</span> is locked against
-              this policy and can leave only through a finalized trigger or the expiry reclaim.
-            </p>
-          )}
-          <p className="caption muted" style={{ marginTop: 24 }}>
-            Every window is wall-clock, read from a consensus clock the contract fetches itself.
-            The boundaries shown here may be a few minutes off; the contract&apos;s own clock decides.
-          </p>
-          <Technical
-            rows={[
-              ["appeal bond", `${formatGen(p.appeal_bond_atto)} GEN`],
-              ["finality window", formatSpan(p.finality_window)],
-              ["appeal window", formatSpan(p.appeal_window)],
-              ["claim grace", formatSpan(p.claim_grace)],
-              ["payout", `${formatGen(p.payout_atto)} GEN`],
-              ["refund", `${formatGen(p.refund_atto)} GEN`],
-            ]}
-          />
+            <Technical
+              rows={[
+                ["appeal bond", `${formatGen(p.appeal_bond_atto)} GEN`],
+                ["finality window", formatSpan(p.finality_window)],
+                ["appeal window", formatSpan(p.appeal_window)],
+                ["claim grace", formatSpan(p.claim_grace)],
+                ["payout", `${formatGen(p.payout_atto)} GEN`],
+                ["refund", `${formatGen(p.refund_atto)} GEN`],
+              ]}
+            />
+          </div>
         </section>
       )}
     </main>

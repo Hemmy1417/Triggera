@@ -118,26 +118,3 @@ export function ThresholdScale({
     </>
   );
 }
-
-/** The insured area: a plotted point and its radius on a graticule, which is
- *  what the coordinates mean. A named area has no point to draw, so the
- *  caller renders the name instead. */
-export function InsuredArea({
-  latE6,
-  lonE6,
-  radiusKm,
-}: {
-  latE6: number;
-  lonE6: number;
-  radiusKm: number;
-}) {
-  const lat = (latE6 / 1_000_000).toFixed(3);
-  const lon = (lonE6 / 1_000_000).toFixed(3);
-  return (
-    <div className="area" role="img" aria-label={`Insured area: ${radiusKm} km around ${lat}, ${lon}`}>
-      <span className="area-chip">
-        {lat}, {lon} · {radiusKm} km
-      </span>
-    </div>
-  );
-}
