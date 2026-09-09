@@ -268,18 +268,26 @@ const deadline = cEnd + grace;
 
 // ── Act A: the claim ────────────────────────────────────────────────────────
 say('');
+let noClaim = false;
 say('ACT A - the policyholder claims on all three independent publishers');
 if (Number(pol.evidence_version) > 0) {
   say('   skipped: a claim is already on the record (v' + pol.evidence_version + ')');
 } else {
   if (nowSec() > deadline - CLOCK_MARGIN) {
-    hardStop('the claim grace closed at ' + deadline + '. The coverage can now only be reclaimed by expire().');
+    /* The window has closed with no claim ever filed. That is not a dead end
+       and must not be treated as one: the coverage is exactly what expire()
+       exists to return. Skip the acts that need a claim and go reclaim it,
+       rather than stopping and leaving real GEN locked behind a script. */
+    say('   the claim grace closed at ' + deadline + ' and no claim was ever filed');
+    say('   nothing can be claimed now — going straight to the reclaim, which is what it is for');
+    noClaim = true;
   }
-  while (nowSec() <= cEnd + CLOCK_MARGIN) {
+  while (!noClaim && nowSec() <= cEnd + CLOCK_MARGIN) {
     const left = cEnd + CLOCK_MARGIN - nowSec();
     say('   the event window is still running, ' + left + 's to go (then ' + grace + 's of grace)');
     await sleep(Math.min(left + 2, 60) * 1000);
   }
+  if (!noClaim) {
   say('   event window ' + cStart + ' -> ' + cEnd + ', one measurement window wide');
   /* Arm the deadline for the one call that has a closing window. From here
      no attempt may start, and no backoff may be waited out, past the moment
@@ -293,12 +301,16 @@ if (Number(pol.evidence_version) > 0) {
   if (!filed.ok) hardStop('file_claim reverted: ' + filed.text.slice(0, 400));
   pol = await view('get_policy', [PID]);
   summarise(pol, 'after the claim');
+  }
 }
 const V = Number(pol.evidence_version);
 
 // ── Act B: the panel, then promotion ────────────────────────────────────────
 say('');
 say('ACT B - the panel reads three live pages, then the record is promoted');
+if (noClaim || Number(pol.evidence_version) === 0) {
+  say('   skipped: there is no claim on this policy, so there is no round to run');
+} else {
 if (pol.status === 'INVESTIGATING') {
   say('   a full LLM round with three live fetches, allow ~20 minutes');
   /* A NONDET ROUND THAT DOES NOT REACH CONSENSUS IS RETRYABLE, AND ONLY THAT.
@@ -403,6 +415,8 @@ if (pol.status === 'FINAL') {
 }
 
 // ── Act D: the insurer reclaims ─────────────────────────────────────────────
+}
+
 say('');
 say('ACT D - the claim grace passes and the coverage goes back to the insurer');
 if (pol.status === 'ACTIVE' || pol.status === 'INVESTIGATING') {
@@ -448,21 +462,37 @@ pol = await view('get_policy', [PID]);
 const mEnd = await money('at the end');
 summarise(pol, 'final');
 check(pol.status === 'EXPIRED', 'the policy ends EXPIRED (got ' + pol.status + ')');
-check(pol.outcome === 'NOT_SATISFIED', 'the outcome of record is still NOT_SATISFIED (got ' + pol.outcome + ')');
+/* Only a policy that was actually determined has an outcome to check. One
+   whose window closed unclaimed reaches EXPIRED with no verdict at all, and
+   asserting NOT_SATISFIED there would demand a determination that never
+   happened. */
+if (Number(pol.judged_version) > 0) {
+  check(pol.outcome === 'NOT_SATISFIED', 'the outcome of record is still NOT_SATISFIED (got ' + pol.outcome + ')');
+} else {
+  check(!pol.outcome, 'no claim was ever determined, so there is no outcome of record (got "' + (pol.outcome || '') + '")');
+}
 check(mEnd.paid === m0.paid, 'PAID_ATTO NEVER MOVED across the whole arc (' + m0.paid + ' -> ' + mEnd.paid + ')');
 check(mEnd.holder === 0n, 'the policyholder received nothing, and is owed nothing (' + mEnd.holder + ')');
 say('');
-say('   Four pages were fetched and read. Two publishers stated a reading for the');
-say('   insured area and both fell short of the trigger. The one page that cleared');
-say('   150 stated it for Borongan, outside the insured radius, so every validator');
-say('   ruled it out of area and it counted for nothing — a true number about the');
-say('   wrong place is not evidence here. The station log is the policyholder own');
-say('   instrument and never counts at all.');
-say('');
-say('   So the contract refused to pay, moved no coverage, and returned it to the');
-say('   insurer once the claim grace closed. The policyholder lost the premium and');
-say('   nothing else; the insurer never paid a claim it did not owe. Nobody');
-say('   arbitrated that — the count did, over evidence that had to earn its place.');
+if (Number(pol.judged_version) > 0) {
+  say('   Four pages were fetched and read. Two publishers stated a reading for the');
+  say('   insured area and both fell short of the trigger. The one page that cleared');
+  say('   150 stated it for Borongan, outside the insured radius, so every validator');
+  say('   ruled it out of area and it counted for nothing — a true number about the');
+  say('   wrong place is not evidence here. The station log is the policyholder own');
+  say('   instrument and never counts at all.');
+  say('');
+  say('   So the contract refused to pay, moved no coverage, and returned it to the');
+  say('   insurer once the claim grace closed. The policyholder lost the premium and');
+  say('   nothing else; the insurer never paid a claim it did not owe. Nobody');
+  say('   arbitrated that — the count did, over evidence that had to earn its place.');
+} else {
+  say('   No claim was ever filed on this policy: its window opened and shut with');
+  say('   nothing submitted, so no panel ran and no outcome exists. The coverage was');
+  say('   not stranded by that. Once the grace closed, expire() returned the whole of');
+  say('   it to the insurer and the insurer pulled it from the ledger. A policy that');
+  say('   is never claimed costs the policyholder its premium and nothing more.');
+}
 
 if (unproven.length) {
   say('REFUSED, REASON NOT RETURNED BY THE NODE (' + unproven.length + '): ' + unproven.join('; '));
