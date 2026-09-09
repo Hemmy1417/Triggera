@@ -50,15 +50,48 @@ const hardStop = (why) => { say(''); say('STOPPED: ' + why); writeFileSync('arc.
 const TRANSIENT = /fetch failed|socket|other side closed|502|503|504|econnreset|timeout|unknown rpc|rate limit|-32029/i;
 const isTransient = (e) => TRANSIENT.test(String(e?.message ?? '') + ' ' + String(e?.cause?.message ?? '') + ' ' + String(e?.details ?? ''));
 
+/* A CALL THAT CANNOT OUTLIVE ITS WINDOW.
+ *
+ * The first run of this arc lost its claim window here. The wait loop exited
+ * correctly with ten minutes to spare, then a call hung with no timeout and
+ * the retry sat on it; by the time anything reached the chain the consensus
+ * clock had advanced FIVE HOURS and the contract refused, rightly, with "the
+ * claim grace after the coverage period has passed". Nothing was wrong with
+ * the contract or the plan -- the helper was simply able to outlast the
+ * deadline it was racing.
+ *
+ * Two guards now. Every attempt is bounded by CALL_TIMEOUT so a dead socket
+ * cannot stall forever, and a retry is refused outright once the remaining
+ * time is shorter than the next backoff. A deadline-aware helper fails fast
+ * and leaves the window intact for a re-run; a deadline-blind one spends the
+ * window and then reports someone else's error. */
+const CALL_TIMEOUT = 45_000;
+let DEADLINE = null;                       // epoch seconds, or null for "no clock pressure"
+
+function withTimeout(label, thunk, ms) {
+  let t;
+  return Promise.race([
+    Promise.resolve().then(thunk).finally(() => clearTimeout(t)),
+    new Promise((_, rej) => { t = setTimeout(() => rej(new Error(label + ' timed out after ' + ms + 'ms')), ms); }),
+  ]);
+}
+
 async function resilient(label, thunk, tries = 6) {
   let last;
   for (let i = 0; i < tries; i++) {
-    try { return await thunk(); }
+    if (DEADLINE && nowSec() >= DEADLINE) {
+      throw new Error(label + ': deadline ' + DEADLINE + ' reached, refusing to start another attempt');
+    }
+    try { return await withTimeout(label, thunk, CALL_TIMEOUT); }
     catch (e) {
       last = e;
-      if (!isTransient(e)) throw e;
+      if (!isTransient(e) && !/timed out after/.test(String(e?.message ?? ''))) throw e;
+      const backoff = 1200 * (i + 1);
+      if (DEADLINE && nowSec() + Math.ceil(backoff / 1000) + 5 >= DEADLINE) {
+        throw new Error(label + ': ' + (DEADLINE - nowSec()) + 's left, too little for another attempt');
+      }
       say('   (' + label + ' wobble, retry ' + (i + 1) + ')');
-      await sleep(1200 * (i + 1));
+      await sleep(backoff);
     }
   }
   throw last;
@@ -119,6 +152,17 @@ function revertText(err) {
   return out.join(' | ');
 }
 
+/* The leader receipt's `result` is SOMETIMES a base64 string and sometimes an
+   object carrying it under `payload`. Both shapes come back from the same
+   node: create_policy answered a bare string here and an object on the payout
+   arc, and reading only `result.payload` silently yielded '' for the first --
+   which is how a policy that was written successfully got reported as "no id".
+   Accept either rather than assuming the shape that happened to appear first. */
+function payloadOf(receipt) {
+  const r = receipt?.result;
+  return (typeof r === 'string' ? r : r?.payload) ?? '';
+}
+
 async function send(role, fn, args, value = 0n, maxTicks = 220) {
   const client = createClient({ chain, account: createAccount(keys[role].pk) });
   const est = await resilient('estimate ' + fn, () =>
@@ -140,7 +184,7 @@ async function send(role, fn, args, value = 0n, maxTicks = 220) {
       const arr = t.consensus_data?.leader_receipt ?? [];
       const l = arr.find((x) => x?.mode !== 'validator') ?? arr[0];
       let text = '';
-      try { text = printable(Buffer.from(l?.result?.payload ?? '', 'base64').toString('utf-8')); } catch { /* none */ }
+      try { text = printable(Buffer.from(payloadOf(l), 'base64').toString('utf-8')); } catch { /* none */ }
       say('   ' + fn + ': FINALIZED ' + t.result_name + ' leader=' + l?.execution_result
         + (text ? ' -> ' + text.slice(0, 90) : ''));
       return { ok: l?.execution_result === 'SUCCESS', text, hash };
@@ -231,7 +275,14 @@ if (Number(pol.evidence_version) > 0) {
     await sleep(Math.min(left + 2, 60) * 1000);
   }
   say('   event window ' + cStart + ' -> ' + cEnd + ', one measurement window wide');
+  /* Arm the deadline for the one call that has a closing window. From here
+     no attempt may start, and no backoff may be waited out, past the moment
+     the claim grace shuts. Losing the window to a hung socket is what went
+     wrong the first time this arc ran. */
+  DEADLINE = deadline - 30;
+  say('   filing with ' + (DEADLINE - nowSec()) + 's of the claim grace left');
   const filed = await send('YES', 'file_claim', [PID, cStart, cEnd, 151, JSON.stringify(ROWS)]);
+  DEADLINE = null;
   check(filed.ok, 'file_claim landed SUCCESS');
   if (!filed.ok) hardStop('file_claim reverted: ' + filed.text.slice(0, 400));
   pol = await view('get_policy', [PID]);
