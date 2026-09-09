@@ -211,13 +211,24 @@ export function availableActs(
       does: `Contest it with a bond of ${gen(p.appeal_bond_atto)}. A re-read that changes the outcome returns the bond; one that does not gives it to the other party.`,
       cost: atto(p.appeal_bond_atto),
       form: "appeal",
+      /* THE CEILING GATES THE APPEAL TOO, AND IT DID NOT.
+         appeal() does not merely record grounds: it writes a NEW package at
+         evidence_version + 1 (triggera.py, `new_version`), so a record already
+         holding its last version has nowhere to put one and the contract
+         refuses unconditionally. Offering the appeal here with no reason —
+         complete with its bond figure — promised a party an act that could
+         only ever come back refused, and would have taken them through the
+         grounds form to find out. The claim act already gated this; the appeal
+         was written as though only the window and the parties mattered. */
       blocked: p.appeal_open
         ? sameAddress(address, p.appellant)
           ? "Your appeal is already open on this decision."
           : "An appeal is already open on this decision."
         : now > Number(p.appeal_until_epoch)
           ? `The appeal window closed ${formatRelative(Number(p.appeal_until_epoch), now)}.`
-          : "",
+          : Number(p.evidence_version) >= limits.versionsMax
+            ? `An appeal adds a version, and the record already holds its ${limits.versionsMax}.`
+            : "",
     });
   }
 

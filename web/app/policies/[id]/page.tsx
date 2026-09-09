@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
-import { formatDate, formatGen, formatSpan } from "../../../lib/config";
+import { formatDate, formatGen, formatGenExact, formatSpan } from "../../../lib/config";
 import {
   getDecision,
   getPackage,
@@ -230,7 +230,10 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
               <div className="pair">
                 <span className="pair-label">Premium</span>
                 <span className="pair-value lg">
-                  {formatGen(p.premium_atto)}
+                  {/* activate() compares msg.value to this figure integer for
+                      integer, so it is shown whole: a rounded premium is a number the
+                      contract would refuse. */}
+                  {formatGenExact(p.premium_atto)}
                   <span className="unit">GEN</span>
                 </span>
                 <span className="pair-note">the insurer&apos;s from activation</span>
@@ -726,7 +729,7 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
             </p>
             <Technical
               rows={[
-                ["appeal bond", `${formatGen(p.appeal_bond_atto)} GEN`],
+                ["appeal bond", `${formatGenExact(p.appeal_bond_atto)} GEN`],
                 ["finality window", formatSpan(p.finality_window)],
                 ["appeal window", formatSpan(p.appeal_window)],
                 ["claim grace", formatSpan(p.claim_grace)],

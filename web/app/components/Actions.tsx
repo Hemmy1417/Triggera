@@ -29,7 +29,7 @@
  *   depends on — is named as something to retry, because it is.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   CONTRACT_ADDRESS,
   CONTRACT_CONFIGURED,
@@ -298,26 +298,51 @@ function useRunner(onLanded: () => void): Runner {
  * leaves the balance unknown rather than asserting zero — an unread balance is
  * not an empty one.
  */
+/* ONE BALANCE, NOT TWO.
+ *
+ * This hook has two callers: the global Withdrawal in Shell, and the act rail
+ * on a policy page. Given a state of its own, each kept a private copy — so a
+ * withdrawal made from one left the other still holding the pre-withdrawal
+ * figure, offering to take money that was already gone. The contract would
+ * have refused it with "nothing claimable", which is the right answer to a
+ * question the app should never have asked.
+ *
+ * The balance belongs to the WALLET, not to either component, so it lives
+ * outside both: one snapshot, one loader, and every mounted reader notified
+ * together. It is still read only on connection and after a landed write —
+ * never on a timer — and a read that fails still leaves the balance unknown
+ * rather than asserting zero, because an unread balance is not an empty one.
+ */
+let CLAIM_SNAPSHOT: { addr: string; atto: bigint } = { addr: "", atto: 0n };
+const CLAIM_LISTENERS = new Set<() => void>();
+const claimSubscribe = (fn: () => void) => {
+  CLAIM_LISTENERS.add(fn);
+  return () => {
+    CLAIM_LISTENERS.delete(fn);
+  };
+};
+const claimSnapshot = () => CLAIM_SNAPSHOT;
+
+async function loadClaimable(address: string): Promise<void> {
+  if (!address || !CONTRACT_CONFIGURED) return;
+  try {
+    const v = await getClaimable(address);
+    CLAIM_SNAPSHOT = { addr: address, atto: BigInt(v) };
+    for (const fn of CLAIM_LISTENERS) fn();
+  } catch {
+    /* unknown, not zero: the withdrawal is simply not offered until a read
+       succeeds, and a failed read must not erase a balance already shown */
+  }
+}
+
 function useClaimable(address: string): { atto: bigint; refresh: () => void } {
-  const [held, setHeld] = useState<{ addr: string; atto: bigint }>({ addr: "", atto: 0n });
-  const [tick, setTick] = useState(0);
-
+  const held = useSyncExternalStore(claimSubscribe, claimSnapshot, claimSnapshot);
   useEffect(() => {
-    if (!address || !CONTRACT_CONFIGURED) return;
-    let live = true;
-    getClaimable(address)
-      .then((v) => {
-        if (live) setHeld({ addr: address, atto: BigInt(v) });
-      })
-      .catch(() => {
-        /* the withdrawal is simply not offered until a read succeeds */
-      });
-    return () => {
-      live = false;
-    };
-  }, [address, tick]);
-
-  const refresh = useCallback(() => setTick((n) => n + 1), []);
+    void loadClaimable(address);
+  }, [address]);
+  const refresh = useCallback(() => {
+    void loadClaimable(address);
+  }, [address]);
   const atto = sameAddress(held.addr, address) ? held.atto : 0n;
   return useMemo(() => ({ atto, refresh }), [atto, refresh]);
 }
@@ -901,7 +926,11 @@ export function Withdrawal() {
   const balance = useClaimable(address);
   const { tx, refusal, busy, run } = useRunner(balance.refresh);
 
-  if (balance.atto <= 0n) return null;
+  /* A successful withdrawal sets the balance to zero, and returning null on
+     that would unmount the very lifecycle reporting the success — the user
+     would see the act vanish and never learn it landed. Stay mounted while a
+     transaction is still on screen. */
+  if (balance.atto <= 0n && !tx) return null;
 
   const act: Act = {
     id: "claim",

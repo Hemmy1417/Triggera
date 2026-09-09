@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableActs, offered, withheld, type Act, type ActId } from "../lib/acts";
+import { CONTRACT_LIMITS, availableActs, offered, withheld, type Act, type ActId } from "../lib/acts";
 import { formatGenExact } from "../lib/config";
 import type { Policy } from "../lib/read";
 
@@ -303,6 +303,18 @@ describe("the appeal: a party, a bond, and one window", () => {
   it("closes with its window", () => {
     const p = final({ appeal_until_epoch: NOW - 3600 });
     expect(find(availableActs(p, HOLDER, NOW, 0n), "appeal").blocked).toMatch(/window closed/);
+  });
+
+  it("is withheld at the version ceiling, because an appeal adds a version", () => {
+    /* appeal() writes a new package at evidence_version + 1, so a record
+       already holding its last version has nowhere to put one and the
+       contract refuses outright. The app used to offer it anyway, bond figure
+       and all, and only the transaction would have said no. */
+    const p = final({ evidence_version: CONTRACT_LIMITS.versionsMax });
+    const act = find(availableActs(p, INSURER, NOW, 0n), "appeal");
+    expect(act).toBeDefined();
+    expect(act!.blocked).toMatch(/already holds its 6/);
+    expect(offered(availableActs(p, INSURER, NOW, 0n)).map((a) => a.id)).not.toContain("appeal");
   });
 
   it("names an appeal already open, and whose it is", () => {
