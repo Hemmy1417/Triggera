@@ -1,0 +1,203 @@
+TRIGGERA refusal arc - policy trg-000004 at 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42
+   STATE on entry: status=INVESTIGATING v1 judged=0 outcome=-/- pubs=0 qual=0 contra=0
+   MONEY on entry: escrow 220000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 20000000000000000
+   ok   the policy measures over one hour (got 1)
+   ok   the trigger is 150 km/h
+   ok   it needs two independent publishers
+
+ACT A - the policyholder claims on all three independent publishers
+   skipped: a claim is already on the record (v1)
+
+ACT B - the panel reads three live pages, then the record is promoted
+   a full LLM round with three live fetches, allow ~20 minutes
+   investigate tx 0x89586657fde70f74cf4e4b577831b9f65d0f52ed762cf3ec630fc75b1f3673f2
+   investigate: ... COMMITTING
+   investigate: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"outcome": "NOT_SATISFIED", "hold_reason": "", "pending_until_epoch": 1788957341}
+   ok   the panel round is on the record for v1
+
+   THE DETERMINATION (v1)
+   ok   the record is SUFFICIENT — the panel could read (got SUFFICIENT)
+   FAIL THREE independent publishers spoke (got 2)
+   FAIL ONE read past the trigger (got 0)
+   ok   TWO read short of it (got 2)
+   ok   the trigger was NOT met (got NOT_SATISFIED)
+   ok   the agency reads 138 (got 138)
+   ok   the press reads 142 (got 142)
+   FAIL the provider reads 151 (got null)
+   ok   the station log is the policyholder's own and never counts
+   the finality window is still open, 843s to go
+   the finality window is still open, 798s to go
+   the finality window is still open, 753s to go
+   the finality window is still open, 708s to go
+   the finality window is still open, 663s to go
+   the finality window is still open, 617s to go
+   the finality window is still open, 572s to go
+   the finality window is still open, 527s to go
+   the finality window is still open, 482s to go
+   the finality window is still open, 437s to go
+   the finality window is still open, 392s to go
+   the finality window is still open, 347s to go
+   the finality window is still open, 302s to go
+   the finality window is still open, 257s to go
+   the finality window is still open, 212s to go
+   the finality window is still open, 167s to go
+   the finality window is still open, 122s to go
+   the finality window is still open, 77s to go
+   the finality window is still open, 32s to go
+   promote tx 0xa40d7665111254172a2c014a45b1595788f0bc148d1d1ec59eb944455a10f9c4
+   promote: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"outcome": "NOT_SATISFIED", "appeal_until_epoch": 1788958259}
+   ok   promote landed SUCCESS (permissionless)
+   STATE after promotion: status=FINAL v1 judged=1 outcome=NOT_SATISFIED/SUFFICIENT pubs=2 qual=0 contra=2
+   ok   the outcome of record is NOT_SATISFIED (got NOT_SATISFIED)
+   ok   a refused trigger reaches a settleable state (got FINAL)
+   MONEY after the determination: escrow 220000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 20000000000000000
+   ok   the determination paid nobody (100000000000000000)
+   ok   the policyholder was credited nothing (0)
+
+ACT C - settlement. The whole point: it moves NOTHING
+   the appeal window is still open, 859s to go
+   the appeal window is still open, 814s to go
+   the appeal window is still open, 769s to go
+   the appeal window is still open, 724s to go
+   the appeal window is still open, 679s to go
+   the appeal window is still open, 634s to go
+   the appeal window is still open, 589s to go
+   the appeal window is still open, 543s to go
+   the appeal window is still open, 498s to go
+   the appeal window is still open, 453s to go
+   the appeal window is still open, 408s to go
+   the appeal window is still open, 363s to go
+   the appeal window is still open, 318s to go
+   the appeal window is still open, 273s to go
+   the appeal window is still open, 228s to go
+   the appeal window is still open, 183s to go
+   the appeal window is still open, 138s to go
+   the appeal window is still open, 93s to go
+   the appeal window is still open, 48s to go
+   the appeal window is still open, 3s to go
+   MONEY before settle: escrow 220000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 20000000000000000
+   settle tx 0x2ea86a8d510517b7634f5cc0c27de79588a69df0225d1bbb65c19331bb6c5650
+   settle: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"outcome": "NOT_SATISFIED", "payout_atto": "0"}
+   ok   settle landed SUCCESS (permissionless)
+   MONEY after settle: escrow 220000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 20000000000000000
+   ok   CUSTODY IS UNCHANGED — a refused trigger moves no coverage (220000000000000000)
+   ok   NOTHING WAS PAID (100000000000000000)
+   ok   the policyholder is credited nothing (0)
+   STATE after settle: status=ACTIVE v1 judged=1 outcome=NOT_SATISFIED/SUFFICIENT pubs=2 qual=0 contra=2
+   ok   the policy returns to ACTIVE for the rest of its period (got ACTIVE)
+
+ACT D - the claim grace passes and the coverage goes back to the insurer
+   the claim grace is still open, 4743s to go
+   the claim grace is still open, 4683s to go
+   the claim grace is still open, 4623s to go
+   the claim grace is still open, 4563s to go
+   the claim grace is still open, 4503s to go
+   the claim grace is still open, 4443s to go
+   the claim grace is still open, 4383s to go
+   the claim grace is still open, 4323s to go
+   the claim grace is still open, 4263s to go
+   the claim grace is still open, 4203s to go
+   the claim grace is still open, 4143s to go
+   the claim grace is still open, 4083s to go
+   the claim grace is still open, 4023s to go
+   the claim grace is still open, 3963s to go
+   the claim grace is still open, 3903s to go
+   the claim grace is still open, 3843s to go
+   the claim grace is still open, 3783s to go
+   the claim grace is still open, 3723s to go
+   the claim grace is still open, 3663s to go
+   the claim grace is still open, 3603s to go
+   the claim grace is still open, 3543s to go
+   the claim grace is still open, 3483s to go
+   the claim grace is still open, 3423s to go
+   the claim grace is still open, 3363s to go
+   the claim grace is still open, 3303s to go
+   the claim grace is still open, 3243s to go
+   the claim grace is still open, 3183s to go
+   the claim grace is still open, 3123s to go
+   the claim grace is still open, 3063s to go
+   the claim grace is still open, 3003s to go
+   the claim grace is still open, 2943s to go
+   the claim grace is still open, 2883s to go
+   the claim grace is still open, 2823s to go
+   the claim grace is still open, 2763s to go
+   the claim grace is still open, 2703s to go
+   the claim grace is still open, 2643s to go
+   the claim grace is still open, 2583s to go
+   the claim grace is still open, 2523s to go
+   the claim grace is still open, 2463s to go
+   the claim grace is still open, 2403s to go
+   the claim grace is still open, 2343s to go
+   the claim grace is still open, 2283s to go
+   the claim grace is still open, 2223s to go
+   the claim grace is still open, 2163s to go
+   the claim grace is still open, 2102s to go
+   the claim grace is still open, 2042s to go
+   the claim grace is still open, 1982s to go
+   the claim grace is still open, 1922s to go
+   the claim grace is still open, 1862s to go
+   the claim grace is still open, 1802s to go
+   the claim grace is still open, 1742s to go
+   the claim grace is still open, 1682s to go
+   the claim grace is still open, 1622s to go
+   the claim grace is still open, 1562s to go
+   the claim grace is still open, 1502s to go
+   the claim grace is still open, 1442s to go
+   the claim grace is still open, 1382s to go
+   the claim grace is still open, 1322s to go
+   the claim grace is still open, 1262s to go
+   the claim grace is still open, 1202s to go
+   the claim grace is still open, 1142s to go
+   the claim grace is still open, 1082s to go
+   the claim grace is still open, 1022s to go
+   the claim grace is still open, 962s to go
+   the claim grace is still open, 902s to go
+   the claim grace is still open, 842s to go
+   the claim grace is still open, 782s to go
+   the claim grace is still open, 722s to go
+   the claim grace is still open, 662s to go
+   the claim grace is still open, 602s to go
+   the claim grace is still open, 542s to go
+   the claim grace is still open, 482s to go
+   the claim grace is still open, 422s to go
+   the claim grace is still open, 362s to go
+   the claim grace is still open, 302s to go
+   the claim grace is still open, 242s to go
+   the claim grace is still open, 182s to go
+   the claim grace is still open, 122s to go
+   the claim grace is still open, 62s to go
+   the claim grace is still open, 2s to go
+GenLayer RPC error (sim_estimateTransactionFees): execution failed
+   ok* file_claim was REFUSED, but the node did not return its reason, so "claim grace" is not proven by this run
+   MONEY before expire: escrow 220000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 20000000000000000
+   expire tx 0x423c71d1e44b10e4be11b7cfc6d83d09d715c265c0262409005ced90a8bfba0b
+   expire: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"refund_atto": "100000000000000000"}
+   ok   expire landed SUCCESS (permissionless — anyone may run it)
+   MONEY after expire: escrow 220000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 120000000000000000
+   ok   THE WHOLE COVERAGE IS CREDITED TO THE INSURER: 20000000000000000 + 100000000000000000 = 120000000000000000
+   ok   the policyholder is still credited nothing (0)
+   ok   paid_atto did not move — a refund is not a payout (100000000000000000)
+   STATE after expire: status=EXPIRED v1 judged=1 outcome=NOT_SATISFIED/SUFFICIENT pubs=2 qual=0 contra=2
+   MONEY before the insurer withdraws: escrow 220000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 120000000000000000
+   claim tx 0x57951cbb2a13a495e11ab8723bcec8b29e42973a100dbcee352ffa01acd30d5d
+   claim: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"claimed_atto": "120000000000000000"}
+   ok   claim landed SUCCESS
+   MONEY after the insurer withdraws: escrow 100000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 0
+   ok   the insurer is owed nothing further (0)
+   ok   custody falls by exactly what left (220000000000000000 - 120000000000000000 = 100000000000000000)
+
+RECONCILIATION
+   MONEY at the end: escrow 100000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 0
+   STATE final: status=EXPIRED v1 judged=1 outcome=NOT_SATISFIED/SUFFICIENT pubs=2 qual=0 contra=2
+   ok   the policy ends EXPIRED (got EXPIRED)
+   ok   the outcome of record is still NOT_SATISFIED (got NOT_SATISFIED)
+   ok   PAID_ATTO NEVER MOVED across the whole arc (100000000000000000 -> 100000000000000000)
+   ok   the policyholder received nothing, and is owed nothing (0)
+
+   The publishers were read and they disagreed with the claim: one past the
+   trigger, two short of it. The contract refused to pay, moved no coverage,
+   and returned it to the insurer once the claim grace closed. The
+   policyholder lost the premium and nothing else; the insurer never paid a
+   claim it did not owe. Nobody arbitrated that — the count did.
+REFUSED, REASON NOT RETURNED BY THE NODE (1): file_claim (claim grace)
+FAILED: 3 - THREE independent publishers spoke (got 2); ONE read past the trigger (got 0); the provider reads 151 (got null)

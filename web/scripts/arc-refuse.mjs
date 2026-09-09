@@ -224,11 +224,17 @@ const ROWS = [
   { url: 'https://rawcdn.githack.com/Hemmy1417/Triggera/' + SHA + '/evidence/storm-14h/provider-history.txt', label: 'Weather provider hourly history' },
   { url: 'https://raw.githack.com/Hemmy1417/Triggera/' + SHA + '/evidence/storm-14h/station-log.txt', label: 'Premises station log' },
 ];
+/* WHAT THE PANEL ACTUALLY FOUND, not what the fixtures were written to show.
+   The provider page states 151 km/h "at Borongan", and the insured area is
+   50 km around Guiuan, so every validator marked that row geo_ok:false and its
+   reading came back null. The page was read; it just was not a reading for the
+   insured area. The outcome is NOT_SATISFIED either way -- the provider was
+   the only source past the trigger -- but the route is 0 of 2, not 1 of 3. */
 const EXPECTED = [
   { host: 'raw.githubusercontent.com', reading: 138, what: 'the agency' },
   { host: 'cdn.jsdelivr.net', reading: 142, what: 'the press' },
-  { host: 'rawcdn.githack.com', reading: 151, what: 'the provider' },
 ];
+const OUT_OF_AREA = { host: 'rawcdn.githack.com', what: 'the provider, reading for Borongan' };
 
 async function money(when) {
   const s = await view('get_stats');
@@ -330,9 +336,9 @@ if (!d) hardStop('no decision record for v' + V);
 say('');
 say('   THE DETERMINATION (v' + V + ')');
 check(d.evidence_flag === 'SUFFICIENT', 'the record is SUFFICIENT — the panel could read (got ' + d.evidence_flag + ')');
-check(Number(d.publishers) === 3, 'THREE independent publishers spoke (got ' + d.publishers + ')');
-check(Number(d.qualifying) === 1, 'ONE read past the trigger (got ' + d.qualifying + ')');
-check(Number(d.contradicting) === 2, 'TWO read short of it (got ' + d.contradicting + ')');
+check(Number(d.publishers) === 2, 'TWO independent publishers counted (got ' + d.publishers + ')');
+check(Number(d.qualifying) === 0, 'NEITHER read past the trigger (got ' + d.qualifying + ')');
+check(Number(d.contradicting) === 2, 'BOTH read short of it (got ' + d.contradicting + ')');
 check(d.outcome === 'NOT_SATISFIED', 'the trigger was NOT met (got ' + d.outcome + ')');
 /* Name every row. The tally alone would be satisfied by a different story. */
 for (const e of EXPECTED) {
@@ -342,7 +348,12 @@ for (const e of EXPECTED) {
 }
 const party = (d.rows ?? []).find((r) => r.host === 'raw.githack.com');
 check(party ? party.cls === 'PARTY' : false, 'the station log is the policyholder\'s own and never counts');
-if (d.outcome !== 'NOT_SATISFIED') {
+/* The row that was dropped, and why. This is the geo check doing real work:
+   a number that is true about the wrong place is not evidence for this policy. */
+const away = (d.rows ?? []).find((r) => r.host === OUT_OF_AREA.host);
+check(away ? away.readable === true : false, OUT_OF_AREA.what + ' was fetched and read');
+check(away ? away.geo_ok === false : false, 'and was ruled OUTSIDE the insured area (geo_ok ' + (away ? away.geo_ok : '?') + ')');
+check(away ? away.reading === null : false, 'so it states no reading here (got ' + (away ? away.reading : '?') + ')');if (d.outcome !== 'NOT_SATISFIED') {
   hardStop('the panel returned ' + d.outcome + ', not NOT_SATISFIED. The evidence decides this, not the script.');
 }
 
@@ -441,11 +452,17 @@ check(pol.outcome === 'NOT_SATISFIED', 'the outcome of record is still NOT_SATIS
 check(mEnd.paid === m0.paid, 'PAID_ATTO NEVER MOVED across the whole arc (' + m0.paid + ' -> ' + mEnd.paid + ')');
 check(mEnd.holder === 0n, 'the policyholder received nothing, and is owed nothing (' + mEnd.holder + ')');
 say('');
-say('   The publishers were read and they disagreed with the claim: one past the');
-say('   trigger, two short of it. The contract refused to pay, moved no coverage,');
-say('   and returned it to the insurer once the claim grace closed. The');
-say('   policyholder lost the premium and nothing else; the insurer never paid a');
-say('   claim it did not owe. Nobody arbitrated that — the count did.');
+say('   Four pages were fetched and read. Two publishers stated a reading for the');
+say('   insured area and both fell short of the trigger. The one page that cleared');
+say('   150 stated it for Borongan, outside the insured radius, so every validator');
+say('   ruled it out of area and it counted for nothing — a true number about the');
+say('   wrong place is not evidence here. The station log is the policyholder own');
+say('   instrument and never counts at all.');
+say('');
+say('   So the contract refused to pay, moved no coverage, and returned it to the');
+say('   insurer once the claim grace closed. The policyholder lost the premium and');
+say('   nothing else; the insurer never paid a claim it did not owe. Nobody');
+say('   arbitrated that — the count did, over evidence that had to earn its place.');
 
 if (unproven.length) {
   say('REFUSED, REASON NOT RETURNED BY THE NODE (' + unproven.length + '): ' + unproven.join('; '));
