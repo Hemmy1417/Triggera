@@ -1,0 +1,118 @@
+TRIGGERA refusal arc - policy trg-000001 at 0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309
+   STATE on entry: status=ACTIVE v0 judged=0 outcome=-/- pubs=0 qual=0 contra=0
+   MONEY on entry: escrow 110000000000000000  paid 0  claimable[holder] 0  claimable[insurer] 10000000000000000
+   ok   the policy measures over one hour (got 1)
+   ok   the policy states a trigger (130 km/h)
+   ok   it needs two independent publishers
+
+ACT A - the policyholder claims on all three independent publishers
+   the event window is still running, 664s to go (then 7200s of grace)
+   the event window is still running, 604s to go (then 7200s of grace)
+   the event window is still running, 544s to go (then 7200s of grace)
+   the event window is still running, 484s to go (then 7200s of grace)
+   the event window is still running, 424s to go (then 7200s of grace)
+   the event window is still running, 364s to go (then 7200s of grace)
+   the event window is still running, 304s to go (then 7200s of grace)
+   the event window is still running, 244s to go (then 7200s of grace)
+   the event window is still running, 184s to go (then 7200s of grace)
+   the event window is still running, 124s to go (then 7200s of grace)
+   the event window is still running, 64s to go (then 7200s of grace)
+   the event window is still running, 4s to go (then 7200s of grace)
+   event window 1788981520 -> 1788985120, one measurement window wide
+   filing with 6838s of the claim grace left
+   file_claim tx 0xb331b120b0a463e0c7cd529cf5bc4d5a82350e4855bb0f54ff5b0b2fdbe14dad
+   file_claim: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"version": 1, "root": "272687492d5699902cac7ac0bcb216ac265c6584f7615394f770d54cc66aedbf"}
+   ok   file_claim landed SUCCESS
+   STATE after the claim: status=INVESTIGATING v1 judged=0 outcome=-/- pubs=0 qual=0 contra=0
+
+ACT B - the panel reads three live pages, then the record is promoted
+   a full LLM round with three live fetches, allow ~20 minutes
+   investigate tx 0xeee7bea5fe428ad2ec655ea1771407c99a84e1a920ca61d0d7931777c0fc9fa9
+   investigate: ... COMMITTING
+   investigate: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"outcome": "SATISFIED", "hold_reason": "", "pending_until_epoch": 1788986438}
+   ok   the panel round is on the record for v1
+
+   THE DETERMINATION (v1)
+   ok   the record is SUFFICIENT — the panel could read (got SUFFICIENT)
+   the trigger is 130 km/h, so 138 and 142 give 2 of 2 -> SATISFIED
+   FAIL 2 independent publishers counted (got 3)
+   FAIL 2 read past the trigger (got 3)
+   ok   0 read short of it (got 0)
+   ok   the determination is SATISFIED (got SATISFIED)
+   ok   the agency reads 138 (got 138)
+   ok   the press reads 142 (got 142)
+   ok   the station log is the policyholder's own and never counts
+   ok   the provider, reading for Borongan was fetched and read
+   FAIL and was ruled OUTSIDE the insured area (geo_ok true)
+   FAIL so it states no reading here (got 151)
+   the finality window is still open, 801s to go
+   the finality window is still open, 756s to go
+   the finality window is still open, 711s to go
+   the finality window is still open, 666s to go
+   the finality window is still open, 621s to go
+   the finality window is still open, 576s to go
+   the finality window is still open, 531s to go
+   the finality window is still open, 486s to go
+   the finality window is still open, 441s to go
+   the finality window is still open, 396s to go
+   the finality window is still open, 351s to go
+   the finality window is still open, 306s to go
+   the finality window is still open, 260s to go
+   the finality window is still open, 215s to go
+   the finality window is still open, 170s to go
+   the finality window is still open, 125s to go
+   the finality window is still open, 80s to go
+   the finality window is still open, 35s to go
+   promote tx 0x1a22f345204dd3750ea402fa6ca9169e4934e8ea9e807cd547e792bd37ee2276
+   promote: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"outcome": "SATISFIED", "appeal_until_epoch": 1788987360}
+   ok   promote landed SUCCESS (permissionless)
+   STATE after promotion: status=FINAL v1 judged=1 outcome=SATISFIED/SUFFICIENT pubs=3 qual=3 contra=0
+   FAIL the outcome of record is NOT_SATISFIED (got SATISFIED)
+   ok   a refused trigger reaches a settleable state (got FINAL)
+   MONEY after the determination: escrow 110000000000000000  paid 0  claimable[holder] 0  claimable[insurer] 10000000000000000
+   ok   the determination paid nobody (0)
+   ok   the policyholder was credited nothing (0)
+
+ACT C - settlement: what the determination actually does to the money
+   the appeal window is still open, 861s to go
+   the appeal window is still open, 816s to go
+   the appeal window is still open, 771s to go
+   the appeal window is still open, 726s to go
+   the appeal window is still open, 681s to go
+   the appeal window is still open, 636s to go
+   the appeal window is still open, 591s to go
+   the appeal window is still open, 546s to go
+   the appeal window is still open, 501s to go
+   the appeal window is still open, 456s to go
+   the appeal window is still open, 411s to go
+   the appeal window is still open, 366s to go
+   the appeal window is still open, 321s to go
+   the appeal window is still open, 276s to go
+   the appeal window is still open, 231s to go
+   the appeal window is still open, 186s to go
+   the appeal window is still open, 141s to go
+   the appeal window is still open, 96s to go
+   the appeal window is still open, 51s to go
+   the appeal window is still open, 6s to go
+   MONEY before settle: escrow 110000000000000000  paid 0  claimable[holder] 0  claimable[insurer] 10000000000000000
+   settle tx 0x07994f16c9dc6708d9733b75d4f57f562f1eff1feb5e9b08cb2cec763833ca98
+   settle: FINALIZED MAJORITY_AGREE leader=SUCCESS -> {"outcome": "SATISFIED", "payout_atto": "100000000000000000"}
+   ok   settle landed SUCCESS (permissionless)
+   MONEY after settle: escrow 110000000000000000  paid 100000000000000000  claimable[holder] 100000000000000000  claimable[insurer] 10000000000000000
+   STATE after settle: status=PAID v1 judged=1 outcome=SATISFIED/SUFFICIENT pubs=3 qual=3 contra=0
+   ok   THE WHOLE COVERAGE IS CREDITED TO THE POLICYHOLDER: 0 + 100000000000000000 = 100000000000000000
+   ok   paid_atto rises by exactly the coverage (100000000000000000)
+   ok   custody is unchanged at settle — crediting is not paying (110000000000000000)
+   ok   the policy is PAID (got PAID)
+
+ACT D - the claim grace passes and the coverage goes back to the insurer
+   skipped: status is PAID
+file:///C:/Users/Pc/Desktop/Triggera/web/scripts/arc-refuse.mjs:486
+  const owedRole = expOutcome === 'SATISFIED' && pol.status === 'PAID' ? 'YES' : 'CREATOR';
+                   ^
+
+ReferenceError: expOutcome is not defined
+    at file:///C:/Users/Pc/Desktop/Triggera/web/scripts/arc-refuse.mjs:486:20
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+Node.js v22.11.0

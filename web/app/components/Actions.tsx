@@ -509,6 +509,20 @@ function BasisFold({ basis }: { basis: BasisEntry[] }) {
   );
 }
 
+/** Why a policy offers nothing, in the words of what happened to it. */
+function closedWords(p: Policy): string {
+  if (p.status === "PAID") {
+    return "This policy is closed. The trigger was met, the coverage was paid to the policyholder, and it has been withdrawn — nothing is left to do here.";
+  }
+  if (p.status === "EXPIRED") {
+    return "This policy is closed. Its period and claim grace ran out, and the coverage went back to the insurer.";
+  }
+  if (p.status === "CANCELLED") {
+    return "This draft was cancelled before anyone activated it, and its coverage was returned.";
+  }
+  return "Nothing is available to this wallet on this policy right now.";
+}
+
 export function Actions({
   policy,
   onLanded,
@@ -599,7 +613,24 @@ export function Actions({
     void run(act, [policy.policy_id], policy.policy_id);
   };
 
-  if (acts.length === 0) return null;
+  /* A CLOSED POLICY IS AN ANSWER, NOT AN ABSENCE.
+     Returning null here made the whole rail vanish on a settled policy — and
+     the first policy a visitor opens on this deployment is a settled one, so
+     the acts appeared to not exist at all. A record that has run its course
+     should SAY it has run its course. It also keeps the rail on screen while
+     a transaction that emptied the list is still reporting itself. */
+  if (acts.length === 0 && !tx) {
+    return (
+      <section className="card" aria-label="Actions">
+        <div className="card-head">
+          <span className="card-title">What you can do now</span>
+        </div>
+        <p className="body-sm muted" style={{ marginTop: 12 }}>
+          {closedWords(policy)}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="card" aria-label="Actions">

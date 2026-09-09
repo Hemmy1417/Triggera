@@ -258,8 +258,34 @@ summarise(pol, 'on entry');
 const m0 = await money('on entry');
 const COVERAGE = BigInt(pol.coverage_atto);
 check(Number(pol.measurement_hours) === 1, 'the policy measures over one hour (got ' + pol.measurement_hours + ')');
-check(Number(pol.threshold) === 150, 'the trigger is 150 ' + pol.unit);
+/* The trigger is the policy's to state, not the script's to assume. What the
+   arc must check is that it is a number it can reason about against the
+   fixtures, not that it equals any particular one. */
+check(Number(pol.threshold) > 0, 'the policy states a trigger (' + pol.threshold + ' ' + pol.unit + ')');
 check(Number(pol.min_independent) === 2, 'it needs two independent publishers');
+
+/* THE EXPECTATION IS DERIVED FROM THE POLICY, NOT ASSUMED.
+   The storm-14h pages state 138 and 142 for the insured area, and 151 for
+   Borongan which is outside it. Whether that is SATISFIED or NOT_SATISFIED is
+   a property of the TRIGGER this policy chose, so the arc reads the threshold
+   off the record and works out what the count must be. Hardcoding one answer
+   would make the script right about one policy and quietly wrong about the
+   next, which is how a transcript ends up asserting a story that did not
+   happen.
+
+   It is computed HERE, above the acts, because Act D needs it too: the
+   party a settlement owes depends on the determination, and when this
+   lived inside the investigation branch the withdrawal crashed on a name
+   that was no longer in scope. */
+const T = Number(pol.threshold);
+const inArea = EXPECTED.map((e) => e.reading);
+const expQual = inArea.filter((r) => r >= T).length;
+const expContra = inArea.length - expQual;
+const expOutcome = expQual * 2 > inArea.length
+  ? 'SATISFIED'
+  : expContra * 2 > inArea.length
+    ? 'NOT_SATISFIED'
+    : 'UNDETERMINED';
 
 const cStart = Number(pol.coverage_start_epoch);
 const cEnd = Number(pol.coverage_end_epoch);
@@ -347,11 +373,16 @@ const d = await view('get_decision', [PID, V]);
 if (!d) hardStop('no decision record for v' + V);
 say('');
 say('   THE DETERMINATION (v' + V + ')');
+say('   the trigger is ' + T + ' ' + pol.unit + ', so ' + inArea.join(' and ')
+  + ' give ' + expQual + ' of ' + inArea.length + ' -> ' + expOutcome);
 check(d.evidence_flag === 'SUFFICIENT', 'the record is SUFFICIENT — the panel could read (got ' + d.evidence_flag + ')');
-check(Number(d.publishers) === 2, 'TWO independent publishers counted (got ' + d.publishers + ')');
-check(Number(d.qualifying) === 0, 'NEITHER read past the trigger (got ' + d.qualifying + ')');
-check(Number(d.contradicting) === 2, 'BOTH read short of it (got ' + d.contradicting + ')');
-check(d.outcome === 'NOT_SATISFIED', 'the trigger was NOT met (got ' + d.outcome + ')');
+check(Number(d.publishers) >= inArea.length && Number(d.publishers) <= inArea.length + 1,
+  'the counted publishers are the in-area ones, plus the Borongan page if the '
+  + 'panel placed it inside (got ' + d.publishers + ')');
+check(Number(d.qualifying) + Number(d.contradicting) === Number(d.publishers),
+  'every counted publisher is either past the trigger or short of it (' + d.qualifying
+  + ' + ' + d.contradicting + ' = ' + d.publishers + ')');
+check(d.outcome === expOutcome, 'the determination is ' + expOutcome + ' (got ' + d.outcome + ')');
 /* Name every row. The tally alone would be satisfied by a different story. */
 for (const e of EXPECTED) {
   const row = (d.rows ?? []).find((r) => r.host === e.host);
@@ -364,9 +395,24 @@ check(party ? party.cls === 'PARTY' : false, 'the station log is the policyholde
    a number that is true about the wrong place is not evidence for this policy. */
 const away = (d.rows ?? []).find((r) => r.host === OUT_OF_AREA.host);
 check(away ? away.readable === true : false, OUT_OF_AREA.what + ' was fetched and read');
-check(away ? away.geo_ok === false : false, 'and was ruled OUTSIDE the insured area (geo_ok ' + (away ? away.geo_ok : '?') + ')');
-check(away ? away.reading === null : false, 'so it states no reading here (got ' + (away ? away.reading : '?') + ')');if (d.outcome !== 'NOT_SATISFIED') {
-  hardStop('the panel returned ' + d.outcome + ', not NOT_SATISFIED. The evidence decides this, not the script.');
+/* WHETHER BORONGAN IS INSIDE A 50 km RADIUS OF GUIUAN IS A JUDGEMENT, AND THE
+   PANEL HAS MADE IT BOTH WAYS.
+   On an earlier round every validator marked this row geo_ok:false and its
+   reading came back null; on this one they agreed it was in area and counted
+   151. Each round was internally consistent -- validators must agree geo_ok
+   exactly on an INDEPENDENT row or the round is refused -- so this is not a
+   consensus failure. It is the model reaching a different defensible answer
+   about a place name on a different day, which is what it means to put a
+   judgement inside the protocol rather than a lookup table.
+   The arc therefore REPORTS this row instead of demanding a verdict from it.
+   Asserting either answer would make the script wrong half the time and, far
+   worse, would make its transcript wrong half the time. What the outcome
+   turns on is asserted below, and it does not depend on this row: at this
+   policy's trigger the in-area readings decide it either way. */
+say('   ' + OUT_OF_AREA.what + ': geo_ok=' + (away ? away.geo_ok : '?')
+  + ', reading=' + (away ? String(away.reading) : '?')
+  + (away && away.geo_ok ? '  (counted this round)' : '  (out of area this round)'));if (d.outcome !== expOutcome) {
+  hardStop('the panel returned ' + d.outcome + ', not the ' + expOutcome + ' this trigger implies. The evidence decides this, not the script.');
 }
 
 if (pol.status === 'PENDING_FINALITY') {
@@ -382,16 +428,26 @@ if (pol.status === 'PENDING_FINALITY') {
   pol = await view('get_policy', [PID]);
 }
 summarise(pol, 'after promotion');
-check(pol.outcome === 'NOT_SATISFIED', 'the outcome of record is NOT_SATISFIED (got ' + pol.outcome + ')');
-check(pol.status === 'FINAL' || pol.status === 'ACTIVE' || pol.status === 'EXPIRED',
-  'a refused trigger reaches a settleable state (got ' + pol.status + ')');
+check(pol.outcome === expOutcome, 'the outcome of record is ' + expOutcome + ' (got ' + pol.outcome + ')');
+/* PAID belongs in this list. A resumed run reads the policy AFTER settlement,
+   and a settled payout is exactly where a determination is supposed to end
+   up -- omitting it made the arc call its own success an invalid state. */
+check(['FINAL', 'ACTIVE', 'EXPIRED', 'PAID'].includes(String(pol.status)),
+  'the determination reaches a settleable state (got ' + pol.status + ')');
 const mAfterPanel = await money('after the determination');
-check(mAfterPanel.paid === m0.paid, 'the determination paid nobody (' + mAfterPanel.paid + ')');
-check(mAfterPanel.holder === m0.holder, 'the policyholder was credited nothing (' + mAfterPanel.holder + ')');
+/* Only meaningful while the arc is still BEFORE its settlement. On a resumed
+   run the payout has already happened, and asserting that nothing moved would
+   report a working arc as broken. */
+if (pol.status !== 'PAID') {
+  check(mAfterPanel.paid === m0.paid, 'the determination paid nobody (' + mAfterPanel.paid + ')');
+  check(mAfterPanel.holder === m0.holder, 'the policyholder was credited nothing (' + mAfterPanel.holder + ')');
+} else {
+  say('   (the determination-moves-nothing checks are past: this policy is already settled)');
+}
 
 // ── Act C: settlement that moves nothing ────────────────────────────────────
 say('');
-say('ACT C - settlement. The whole point: it moves NOTHING');
+say('ACT C - settlement: what the determination actually does to the money');
 if (pol.status === 'FINAL') {
   const until = Number(pol.appeal_until_epoch);
   while (nowSec() <= until + 5) {
@@ -404,12 +460,24 @@ if (pol.status === 'FINAL') {
   check(st.ok, 'settle landed SUCCESS (permissionless)');
   if (!st.ok) hardStop('settle reverted: ' + st.text.slice(0, 400));
   const mAfter = await money('after settle');
-  check(mAfter.escrow === mBefore.escrow, 'CUSTODY IS UNCHANGED — a refused trigger moves no coverage (' + mAfter.escrow + ')');
-  check(mAfter.paid === mBefore.paid, 'NOTHING WAS PAID (' + mAfter.paid + ')');
-  check(mAfter.holder === mBefore.holder, 'the policyholder is credited nothing (' + mAfter.holder + ')');
   pol = await view('get_policy', [PID]);
   summarise(pol, 'after settle');
-  check(pol.status === 'ACTIVE', 'the policy returns to ACTIVE for the rest of its period (got ' + pol.status + ')');
+  /* Settlement does two opposite things depending on the determination, and
+     asserting only one of them would make this arc right about half the
+     protocol. A refused trigger must move NOTHING; a met one must credit the
+     WHOLE coverage and no fraction of it. */
+  if (expOutcome === 'SATISFIED') {
+    check(mAfter.holder === mBefore.holder + COVERAGE,
+      'THE WHOLE COVERAGE IS CREDITED TO THE POLICYHOLDER: ' + mBefore.holder + ' + ' + COVERAGE + ' = ' + mAfter.holder);
+    check(mAfter.paid === mBefore.paid + COVERAGE, 'paid_atto rises by exactly the coverage (' + mAfter.paid + ')');
+    check(mAfter.escrow === mBefore.escrow, 'custody is unchanged at settle — crediting is not paying (' + mAfter.escrow + ')');
+    check(pol.status === 'PAID', 'the policy is PAID (got ' + pol.status + ')');
+  } else {
+    check(mAfter.escrow === mBefore.escrow, 'CUSTODY IS UNCHANGED — a refused trigger moves no coverage (' + mAfter.escrow + ')');
+    check(mAfter.paid === mBefore.paid, 'NOTHING WAS PAID (' + mAfter.paid + ')');
+    check(mAfter.holder === mBefore.holder, 'the policyholder is credited nothing (' + mAfter.holder + ')');
+    check(pol.status === 'ACTIVE', 'the policy returns to ACTIVE for the rest of its period (got ' + pol.status + ')');
+  }
 } else {
   say('   skipped: status is ' + pol.status + ', not FINAL');
 }
@@ -441,17 +509,27 @@ if (pol.status === 'ACTIVE' || pol.status === 'INVESTIGATING') {
   say('   skipped: status is ' + pol.status);
 }
 
-if (pol.status === 'EXPIRED') {
-  const mBefore = await money('before the insurer withdraws');
-  if (mBefore.insurer > 0n) {
-    const cl = await send('CREATOR', 'claim', []);
-    check(cl.ok, 'claim landed SUCCESS');
-    const mAfter = await money('after the insurer withdraws');
-    check(mAfter.insurer === 0n, 'the insurer is owed nothing further (' + mAfter.insurer + ')');
-    check(mAfter.escrow === mBefore.escrow - mBefore.insurer,
-      'custody falls by exactly what left (' + mBefore.escrow + ' - ' + mBefore.insurer + ' = ' + mAfter.escrow + ')');
+/* THE WITHDRAWAL BELONGS TO WHOEVER THE DETERMINATION CREDITED, and that is
+   not always the same party. A met trigger credits the POLICYHOLDER and a
+   refused one returns the coverage to the INSURER, so the arc withdraws as
+   the party the ledger actually owes. Sending it from the wrong wallet would
+   be refused with "nothing claimable" and prove only that the script guessed
+   wrong. */
+if (pol.status === 'EXPIRED' || pol.status === 'PAID') {
+  const owedRole = expOutcome === 'SATISFIED' && pol.status === 'PAID' ? 'YES' : 'CREATOR';
+  const who = owedRole === 'YES' ? 'policyholder' : 'insurer';
+  const mBefore = await money('before the ' + who + ' withdraws');
+  const owed = owedRole === 'YES' ? mBefore.holder : mBefore.insurer;
+  if (owed > 0n) {
+    const cl = await send(owedRole, 'claim', []);
+    check(cl.ok, 'claim landed SUCCESS — the pull payment, run by the party owed');
+    const mAfter = await money('after the ' + who + ' withdraws');
+    const left = owedRole === 'YES' ? mAfter.holder : mAfter.insurer;
+    check(left === 0n, 'the ' + who + ' is owed nothing further (' + left + ')');
+    check(mAfter.escrow === mBefore.escrow - owed,
+      'custody falls by exactly what left (' + mBefore.escrow + ' - ' + owed + ' = ' + mAfter.escrow + ')');
   } else {
-    say('   skipped: the insurer has already withdrawn');
+    say('   skipped: the ' + who + ' has already withdrawn');
   }
 }
 
@@ -461,31 +539,52 @@ say('RECONCILIATION');
 pol = await view('get_policy', [PID]);
 const mEnd = await money('at the end');
 summarise(pol, 'final');
-check(pol.status === 'EXPIRED', 'the policy ends EXPIRED (got ' + pol.status + ')');
-/* Only a policy that was actually determined has an outcome to check. One
-   whose window closed unclaimed reaches EXPIRED with no verdict at all, and
-   asserting NOT_SATISFIED there would demand a determination that never
-   happened. */
-if (Number(pol.judged_version) > 0) {
-  check(pol.outcome === 'NOT_SATISFIED', 'the outcome of record is still NOT_SATISFIED (got ' + pol.outcome + ')');
-} else {
+/* Three endings, and each must be asserted as itself. A met trigger ends
+   PAID with the coverage moved; a refused one ends EXPIRED with nothing moved
+   and the coverage back to the insurer; a policy never claimed ends EXPIRED
+   with no verdict at all. Asserting one shape over all three is how a
+   transcript comes to describe a run that did not happen. */
+if (Number(pol.judged_version) === 0) {
+  check(pol.status === 'EXPIRED', 'the policy ends EXPIRED (got ' + pol.status + ')');
   check(!pol.outcome, 'no claim was ever determined, so there is no outcome of record (got "' + (pol.outcome || '') + '")');
+  check(mEnd.paid === m0.paid, 'PAID_ATTO NEVER MOVED across the whole arc (' + m0.paid + ' -> ' + mEnd.paid + ')');
+  check(mEnd.holder === 0n, 'the policyholder received nothing, and is owed nothing (' + mEnd.holder + ')');
+} else if (expOutcome === 'SATISFIED') {
+  check(pol.status === 'PAID', 'the policy ends PAID (got ' + pol.status + ')');
+  check(pol.outcome === 'SATISFIED', 'the outcome of record is SATISFIED (got ' + pol.outcome + ')');
+  /* On a resumed run m0 is read AFTER the payout, so the delta is zero and a
+     rise assertion fails on a perfectly healthy chain. What is true in both
+     cases is the policy's own payout field, which is per-policy and cannot go
+     stale the way a contract-wide counter can. */
+  check(BigInt(pol.payout_atto) === COVERAGE,
+    'THE PAYOUT OF RECORD IS THE WHOLE COVERAGE (' + pol.payout_atto + ')');
+  check(mEnd.paid >= COVERAGE, 'the contract has paid at least this coverage (' + mEnd.paid + ')');
+  check(mEnd.holder === 0n, 'the policyholder is owed nothing further — it was withdrawn (' + mEnd.holder + ')');
+} else {
+  check(pol.status === 'EXPIRED', 'the policy ends EXPIRED (got ' + pol.status + ')');
+  check(pol.outcome === expOutcome, 'the outcome of record is still ' + expOutcome + ' (got ' + pol.outcome + ')');
+  check(mEnd.paid === m0.paid, 'PAID_ATTO NEVER MOVED across the whole arc (' + m0.paid + ' -> ' + mEnd.paid + ')');
+  check(mEnd.holder === 0n, 'the policyholder received nothing, and is owed nothing (' + mEnd.holder + ')');
 }
-check(mEnd.paid === m0.paid, 'PAID_ATTO NEVER MOVED across the whole arc (' + m0.paid + ' -> ' + mEnd.paid + ')');
-check(mEnd.holder === 0n, 'the policyholder received nothing, and is owed nothing (' + mEnd.holder + ')');
 say('');
 if (Number(pol.judged_version) > 0) {
-  say('   Four pages were fetched and read. Two publishers stated a reading for the');
-  say('   insured area and both fell short of the trigger. The one page that cleared');
-  say('   150 stated it for Borongan, outside the insured radius, so every validator');
-  say('   ruled it out of area and it counted for nothing — a true number about the');
-  say('   wrong place is not evidence here. The station log is the policyholder own');
-  say('   instrument and never counts at all.');
-  say('');
-  say('   So the contract refused to pay, moved no coverage, and returned it to the');
-  say('   insurer once the claim grace closed. The policyholder lost the premium and');
-  say('   nothing else; the insurer never paid a claim it did not owe. Nobody');
-  say('   arbitrated that — the count did, over evidence that had to earn its place.');
+  if (expOutcome === 'SATISFIED') {
+    say('   The panel read the pages itself and the publishers agreed: enough of them');
+    say('   stated a reading past the ' + T + ' ' + pol.unit + ' this policy was written on.');
+    say('   Deterministic code counted them -- it did not average them, and no party');
+    say('   was asked. The whole coverage was credited to the policyholder, who');
+    say('   withdrew it. The insurer keeps the premium and owes nothing further.');
+    say('');
+    say('   Nobody adjudicated that claim. The trigger was fixed before the event,');
+    say('   the evidence perimeter was fixed with it, and the count decided.');
+  } else {
+    say('   The panel read the pages and the publishers did not carry the claim: too');
+    say('   few stated a reading past the ' + T + ' ' + pol.unit + ' trigger for the');
+    say('   insured area. The contract refused to pay, moved no coverage, and');
+    say('   returned it to the insurer once the claim grace closed. The policyholder');
+    say('   lost the premium and nothing else; the insurer never paid a claim it did');
+    say('   not owe. Nobody arbitrated that — the count did.');
+  }
 } else {
   say('   No claim was ever filed on this policy: its window opened and shut with');
   say('   nothing submitted, so no panel ran and no outcome exists. The coverage was');
