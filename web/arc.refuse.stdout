@@ -1,0 +1,17 @@
+TRIGGERA refusal arc - policy trg-000003 at 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42
+   STATE on entry: status=ACTIVE v0 judged=0 outcome=-/- pubs=0 qual=0 contra=0
+   MONEY on entry: escrow 110000000000000000  paid 100000000000000000  claimable[holder] 0  claimable[insurer] 10000000000000000
+   ok   the policy measures over one hour (got 1)
+   ok   the trigger is 150 km/h
+   ok   it needs two independent publishers
+
+ACT A - the policyholder claims on all three independent publishers
+   the event window is still running, 3306s to go (then 900s of grace)
+   the event window is still running, 3246s to go (then 900s of grace)
+   the event window is still running, 3186s to go (then 900s of grace)
+   the event window is still running, 3126s to go (then 900s of grace)
+   the event window is still running, 3066s to go (then 900s of grace)
+   the event window is still running, 3006s to go (then 900s of grace)
+   the event window is still running, 2946s to go (then 900s of grace)
+   the event window is still running, 2886s to go (then 900s of grace)
+   the event window is still running, 2826s to go (then 900s of grace)
