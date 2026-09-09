@@ -22,6 +22,7 @@ three distinct publishers.
 |---|---|---|
 | `storm-07` | agency 157 · provider 149 · press 161 · station 153 | Act I: SATISFIED on agency + press (2 of 2); the insurer's appeal adds the provider (149) and the outcome stands at 2 of 3 — bond forfeited |
 | `storm-12` | agency 138 · provider 151 · press 142 · station 149 | Act II: NOT_SATISFIED (1 of 3); nothing moves; the policy expires back to the insurer |
+| `storm-14h` | agency 138 · press 142 · provider 151 · station 149, all stated over a **1-hour** window | Act II, live: with `measurement_hours = 1` the panel can read these inside a one-hour event window, so the whole arc runs the same day instead of waiting out a 24-hour coverage period. One publisher past the trigger and two short — NOT_SATISFIED, nothing moves, and the coverage returns to the insurer through `expire` |
 | `storm-07b` | agency page absent (404) · press 157 · provider 152 · station 150 | Act III: with `min_independent = 2` and one readable publisher, UNDETERMINED · UNCORROBORATED; refiled with the provider, SATISFIED (2 of 2) |
 
 Pages identify the event by storm number rather than by calendar date; the
@@ -34,3 +35,9 @@ https://cdn.jsdelivr.net/gh/Hemmy1417/Triggera@<sha>/evidence/storm-07/press-rep
 https://rawcdn.githack.com/Hemmy1417/Triggera/<sha>/evidence/storm-07/provider-history.txt
 https://raw.githack.com/Hemmy1417/Triggera/<sha>/evidence/storm-07/station-log.txt
 ```
+
+`storm-14h` exists because the event window a claim names must be at least one
+measurement window wide, and the window must be OVER before a claim is
+accepted. A 24-hour policy therefore cannot be claimed until a day has passed.
+The readings are the same shape as `storm-12`; only the stated window differs,
+so the scenario is identical and the wait is not.

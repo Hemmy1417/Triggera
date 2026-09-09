@@ -1,0 +1,4 @@
+WEATHER HISTORY — EASTERN SAMAR — TROPICAL STORM 14
+Commercial weather provider, station-network summary for the 1-hour window covering the storm's peak.
+Highest 1-hour maximum sustained wind speed recorded by our Eastern Samar network: 151 km/h at Borongan.
+Gusts to 172 km/h. Figures are provisional pending station reconciliation.
