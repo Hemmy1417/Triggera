@@ -31,7 +31,7 @@ WORK = pathlib.Path(__file__).resolve().parent / "work"
 CONTRACT_REL = pathlib.Path("contracts") / "triggera.py"
 
 # A sweep that silently lost entries must not report success.
-EXPECTED_MIN_GUARDS = 83
+EXPECTED_MIN_GUARDS = 85
 
 IGNORE = shutil.ignore_patterns("work", "__pycache__", "node_modules", ".next",
                                 ".git", "web", ".pytest_cache")
@@ -63,6 +63,16 @@ EQUIVALENT_NOT_RUN = [
 
 MUTATIONS = [
     ("CONTROL (no mutation - must PASS)", None, None),
+
+    # -- S34: the excerpt a later appeal re-reads must be corroborated -----
+    # Disabling either branch lets a leader store a passage no validator saw,
+    # which every appeal after it would then faithfully reconsider.
+    ('validator: the leader excerpt must be text this validator fetched',
+     '                    if not (mine_x.startswith(theirs_x) or theirs_x.startswith(mine_x)):',
+     '                    if False:'),
+    ('validator: a readable row may not carry an empty excerpt',
+     '                    if not theirs_x:',
+     '                    if False:'),
 
     # -- guards, derived from the source: each disables one refusal --------
     ('_require_clock: now == 0',

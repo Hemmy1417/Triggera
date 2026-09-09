@@ -559,6 +559,38 @@ def test_re_investigation_prompt_names_the_appeal_the_grounds_and_each_rows_prov
     assert "FETCHED BY THIS NODE NOW" in first_round_prompt
 
 
+def test_what_an_appeal_rereads_is_byte_for_byte_what_round_one_agreed(module, c):
+    """THE CHAIN THE JUDGE HAS TO BE ABLE TO FOLLOW.
+
+    Round one's bytes are not the leader's word: a validator refuses any
+    excerpt it did not fetch itself (see
+    test_a_leader_selected_replacement_excerpt_is_refused_on_a_fetched_row),
+    so what reaches storage is text the panel corroborated. This asserts the
+    other half — that an appeal re-reads exactly those bytes, unchanged and
+    still covered by their digest, and marks them as reused rather than
+    refetched. Corroborated at entry, verbatim on reuse: that is the whole
+    custody chain in one test."""
+    pid = filed(module, c)
+    r1 = {r["id"]: r for r in decision(c, pid, 1)["rows"]}
+
+    panel_says(answer(readings=FIVE_ROWS))
+    as_(module, STRANGER, 0)
+    c.re_investigate(pid)
+    r2 = {r["id"]: r for r in decision(c, pid, 2)["rows"]}
+
+    reused = [i for i in r1 if i in r2 and r2[i]["basis"] == "RECORDED"]
+    assert reused, "the appeal reused nothing, so there is no chain to check"
+    for i in reused:
+        assert r2[i]["excerpt"] == r1[i]["excerpt"]        # byte for byte
+        assert r2[i]["digest"] == r1[i]["digest"]
+        assert r2[i]["fetch_epoch"] == r1[i]["fetch_epoch"]
+        assert r2[i]["basis_round"] == 1                   # named as round one's
+        assert module._sha256_hex(r2[i]["excerpt"]) == r2[i]["digest"]
+    # the appellant's own row is NEW, never smuggled in as reused evidence
+    assert any(r["basis"] == "NEW" for r in decision(c, pid, 2)["rows"])
+    conserve(module, c)
+
+
 def test_re_investigation_record_is_marked_and_points_at_the_reconsidered_round(module, c):
     pid = filed(module, c)
     d1_raw = c.get_decision(pid, 1)

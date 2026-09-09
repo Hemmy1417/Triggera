@@ -1759,6 +1759,31 @@ Respond ONLY with JSON:
                         return False
                     if _as_int(them.get("fetch_epoch"), -1) != me["fetch_epoch"]:
                         return False
+                elif me["readable"] and them.get("readable") is True:
+                    # S34 AUTHENTICITY FLOOR ON THE BYTES THEMSELVES.
+                    #
+                    # A FETCHED row's excerpt is not decoration: it is stored,
+                    # sealed by its digest, and re-read verbatim by any later
+                    # appeal as RECORDED. If validators only checked that the
+                    # digest covered the leader's OWN bytes, that seal would
+                    # certify nothing about the page — a leader could store a
+                    # passage no other node ever saw, and every appeal after it
+                    # would faithfully reconsider a fabrication.
+                    #
+                    # So the bytes must be corroborated where they enter the
+                    # record, not merely where they are reused. Both nodes
+                    # build the excerpt the same way, as the leading
+                    # MAX_EXCERPT_CHARS of the same defanged page, so on the
+                    # same page one is necessarily a prefix of the other —
+                    # equal when the renders agree, prefix-compatible when one
+                    # node's render ran longer. Text the validator did not
+                    # fetch satisfies neither, and the round is refused.
+                    theirs_x = str(them.get("excerpt", ""))
+                    mine_x = str(me["excerpt"])
+                    if not theirs_x:
+                        return False
+                    if not (mine_x.startswith(theirs_x) or theirs_x.startswith(mine_x)):
+                        return False
                 # Readings on INDEPENDENT rows steer the derivation, so they
                 # are agreed exactly; party rows inform only and stay free.
                 if me["cls"] == "INDEPENDENT":

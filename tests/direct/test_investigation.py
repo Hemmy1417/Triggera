@@ -1236,22 +1236,62 @@ def test_a_forged_party_reading_is_tolerated_as_a_free_field(module, c):
     conserve(module, c)
 
 
-def test_a_forged_excerpt_behind_its_own_digest_is_tolerated_on_a_fetched_row(module, c):
-    """A FETCHED row's bytes are free between honest nodes — a live page moves
-    — and only digest-covers-own-excerpt is bound. The validator's own
-    readings bind the money; the leader's bytes become the record."""
+def test_a_leader_selected_replacement_excerpt_is_refused_on_a_fetched_row(module, c):
+    """S34: a FETCHED row's bytes ARE the record a later appeal re-reads, so
+    they cannot be the leader's word alone. A digest that covers the leader's
+    own bytes proves only self-consistency; it certifies nothing about the
+    page. The validator fetched that page too, and refuses a passage it did
+    not see — even one sealed by a perfectly coherent digest."""
     pid = claimed(module, c)
     panel_says(answer())
     forged = "Maximum sustained wind speed: 200 km/h."
 
     def forge(v):
         v["rows"][0]["excerpt"] = forged
-        v["rows"][0]["digest"] = module._sha256_hex(forged)
+        v["rows"][0]["digest"] = module._sha256_hex(forged)   # a coherent lie
 
-    assert tampered_round(module, c, pid, forge) is True
+    assert tampered_round(module, c, pid, forge) is False
+    # refused outright: no decision is written, so nothing can reuse it
+    assert decision(c, pid, 1) is None
+    conserve(module, c)
+
+
+def test_a_readable_row_with_an_empty_excerpt_is_refused(module, c):
+    """The empty string is a prefix of every page, so prefix-compatibility
+    alone would wave through a leader that calls a row readable and then
+    stores NOTHING behind a perfectly coherent sha256("") digest. The record
+    would carry a source the panel supposedly read and no bytes to re-read,
+    and every appeal after it would reconsider that emptiness in good faith.
+    A row is readable or it is not; it cannot be both."""
+    pid = claimed(module, c)
+    panel_says(answer())
+
+    def hollow(v):
+        row = v["rows"][0]
+        row["excerpt"] = ""                              # readable stays True
+        row["digest"] = module._sha256_hex("")           # and the seal still fits
+
+    assert tampered_round(module, c, pid, hollow) is False
+    assert decision(c, pid, 1) is None
+    conserve(module, c)
+
+
+def test_an_honest_excerpt_that_is_a_prefix_of_the_validators_own_is_accepted(module, c):
+    """The corroboration must not punish an honest node whose render ran
+    longer. Both build the excerpt as the leading characters of the same page,
+    so one is necessarily a prefix of the other; that is agreement, not
+    divergence."""
+    pid = claimed(module, c)
+    panel_says(answer())
+
+    def shorten(v):
+        row = v["rows"][0]
+        row["excerpt"] = row["excerpt"][: max(8, len(row["excerpt"]) // 2)]
+        row["digest"] = module._sha256_hex(row["excerpt"])
+
+    assert tampered_round(module, c, pid, shorten) is True
     d = decision(c, pid, 1)
     assert derived(d) == ("SATISFIED", "", 3, 2, 1)
-    assert d["rows"][0]["excerpt"] == forged
     assert module._dossier_intact(d["rows"])
 
 
