@@ -1638,6 +1638,16 @@ main.page.detail { padding-top: 32px; }
 .gate.stale { box-shadow: inset 3px 0 0 var(--amber); color: var(--bone); }
 .gate.live { box-shadow: inset 3px 0 0 var(--sky); }
 
+/* the withdrawal band, under the masthead on every page: the pull ledger is
+   the contract's only external value path, so a credited balance follows the
+   wallet rather than living on one screen. Same measure and gutter as the
+   page below it — no new geometry, only the placement. */
+.claimbar {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--gap-air) var(--pad-x) 0;
+}
+
 /* a value the contract does NOT compute — a count of publishers, never an
    average — set so the count itself is the headline */
 .count { display: flex; align-items: baseline; gap: 12px; }

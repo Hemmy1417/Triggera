@@ -80,6 +80,37 @@ export function StateNote({
   return <div className={`note${kind === "unreachable" ? " error" : ""}`}>{children}</div>;
 }
 
+/** A labelled control. The line beneath it is a hint or a problem, never both
+ *  and never a paragraph: they occupy the same line so nothing jumps as you
+ *  type, and a problem simply reads in the brighter colour. Lifted out of the
+ *  policy builder when the claim and appeal forms needed the same control —
+ *  one field is one look, wherever the app asks a question. */
+export function Field({
+  label,
+  hint,
+  problem,
+  children,
+}: {
+  label: string;
+  hint?: React.ReactNode;
+  problem?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="field">
+      <span className="label">{label}</span>
+      {children}
+      {problem ? (
+        <span className="hint" style={{ color: "var(--bone)" }}>
+          {problem}
+        </span>
+      ) : hint ? (
+        <span className="hint">{hint}</span>
+      ) : null}
+    </label>
+  );
+}
+
 /** The technical fold: every machine value the page owes the reader, and
  *  none of them in the prose above it. */
 export function Technical({

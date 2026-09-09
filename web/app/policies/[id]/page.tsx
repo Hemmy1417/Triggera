@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { formatDate, formatGen, formatSpan } from "../../../lib/config";
 import {
   getDecision,
@@ -11,6 +11,7 @@ import {
   type Decision,
   type Policy,
 } from "../../../lib/read";
+import { Actions } from "../../components/Actions";
 import { Dot, Ident, StateNote, Status, Technical } from "../../components/bits";
 import { triggerSentence } from "../../components/trigger";
 import { explorerAddress } from "../../components/Shell";
@@ -88,15 +89,28 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
   const [pkg, setPkg] = useState<ClaimPackage | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
 
+  /* An act on this page changes the record, so the page has to be able to
+     read itself again. `reload` is bumped when a write LANDS; the re-read is
+     forced past the four-second cache, and it deliberately does NOT put the
+     view back into its loading state — the transaction flow is rendered by a
+     component below, and blanking the page would unmount the very lifecycle
+     the user is watching. */
+  const [reload, setReload] = useState(0);
+  const again = useCallback(() => setReload((n) => n + 1), []);
+
   useEffect(() => {
     let live = true;
-    getPolicy(id)
+    getPolicy(id, reload > 0)
       .then((p) => live && setPolicy({ state: "ok", data: p }))
-      .catch((e) => live && setPolicy({ state: "down", why: String(e?.message ?? e) }));
+      .catch((e) => {
+        /* a failed refresh keeps the record that is already on screen: the
+           first read is the only one allowed to report the page unreadable */
+        if (live && reload === 0) setPolicy({ state: "down", why: String(e?.message ?? e) });
+      });
     return () => {
       live = false;
     };
-  }, [id]);
+  }, [id, reload]);
 
   const p = policy.state === "ok" ? policy.data : null;
   const version = p?.evidence_version ?? 0;
@@ -105,14 +119,19 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
   useEffect(() => {
     if (!p || version === 0) return;
     let live = true;
-    getPackage(id, version).then((v) => live && setPkg(v)).catch(() => {});
+    /* A version's package and decision never change once written, so they are
+       cached hard — but an ABSENT decision caches as null for a minute, and a
+       round that has just landed would be reported as "not yet decided" for
+       the rest of it. A landed write forces both. */
+    const force = reload > 0;
+    getPackage(id, version, force).then((v) => live && setPkg(v)).catch(() => {});
     if (judged > 0) {
-      getDecision(id, judged).then((v) => live && setDecision(v)).catch(() => {});
+      getDecision(id, judged, force).then((v) => live && setDecision(v)).catch(() => {});
     }
     return () => {
       live = false;
     };
-  }, [id, p, version, judged]);
+  }, [id, p, version, judged, reload]);
 
   if (policy.state === "loading") {
     return (
@@ -718,6 +737,11 @@ export default function PolicyPage({ params }: { params: Promise<{ id: string }>
           </div>
         </section>
       )}
+
+      {/* The path itself, under the record it acts on: every write the
+          contract exposes, filtered to what this wallet can do to this policy
+          right now. `.page.detail > * + *` spaces it like any other section. */}
+      <Actions policy={p} onLanded={again} />
     </main>
   );
 }

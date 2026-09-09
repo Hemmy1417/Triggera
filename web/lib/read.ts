@@ -172,15 +172,39 @@ export async function getPackage(
   )) as ClaimPackage | null;
 }
 
-/** A ledger balance is never cached: it is the number a claim button acts on. */
+/**
+ * A wallet's claimable balance, in atto, as a decimal string.
+ *
+ * This one read bypasses `view()` deliberately: get_claimable answers with a
+ * plain decimal string rather than JSON, and view()'s JSON.parse would turn
+ * "0" into the number 0 and a balance past 2^53 into a lossy float. What it
+ * must NOT bypass is the retry and the ReadError — it is the predicate the
+ * withdrawal is confirmed by, and a rate-limited read that threw a bare error
+ * here would be classified as a hard failure and a withdrawal that had landed
+ * reported as failed (the exact bug the ReadError comment above documents).
+ * So the two behaviours view() adds are reproduced, and only the parsing is
+ * left out.
+ *
+ * Never cached: it is the number a withdrawal acts on.
+ */
 export async function getClaimable(addr: string): Promise<string> {
   if (!CONTRACT_CONFIGURED) throw new Error("no contract configured");
-  const raw = await client.readContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    functionName: "get_claimable",
-    args: [addr],
-  });
-  return String(raw ?? "0");
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const raw = await client.readContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "get_claimable",
+        args: [addr],
+      });
+      return String(raw ?? "0");
+    } catch (err) {
+      const e = asReadError(err);
+      if (!e.transient || attempt === 2) throw e;
+      await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+    }
+  }
+  /* unreachable: the loop either returns or throws */
+  throw new ReadError("the claimable balance could not be read", true);
 }
 
 /**
@@ -206,6 +230,17 @@ export type Config = {
   place_chars: [number, number];
   metric_chars: [number, number];
   unit_chars: [number, number];
+  /* The bounds the CLAIM and APPEAL forms are written against. Every one of
+     these already arrives in the JSON; they were simply not declared, so the
+     forms that need them could only mirror the constants by hand. */
+  label_chars: [number, number];
+  url_chars: [number, number];
+  grounds_chars: [number, number];
+  sources: [number, number];
+  versions_max: number;
+  event_window_seconds: [number, number];
+  stale_appeal_seconds: number;
+  excerpt_chars: number;
   basis_entries: [number, number];
   window_seconds: [number, number];
   claim_grace_seconds: [number, number];
@@ -217,6 +252,8 @@ export type Config = {
   operators: string[];
   source_kinds: string[];
   source_classes: string[];
+  basis_tags: string[];
+  conflict_codes: string[];
   outcomes: string[];
   hold_reasons: string[];
   evidence_flags: string[];

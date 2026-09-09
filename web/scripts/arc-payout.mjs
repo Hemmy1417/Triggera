@@ -40,7 +40,7 @@ import { studioDevnet } from 'genlayer-js/chains';
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 
 const RPC = 'https://studio-next.genlayer.com/api';
-const ADDR = '0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42';
+const ADDR = '0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309';
 const PID = 'trg-000001';
 const SHA = '43c12b4bd913dc8b0ea7eb5c685d1ea85efe41da';
 const FEE_FLOOR = 10n ** 15n;

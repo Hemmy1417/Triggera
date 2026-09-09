@@ -1,7 +1,7 @@
 import { createClient } from 'genlayer-js';
 import { studioDevnet } from 'genlayer-js/chains';
 const RPC='https://studio-next.genlayer.com/api';
-const ADDR='0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42';
+const ADDR='0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309';
 const chain={...studioDevnet,id:61997,name:'Studio Next',rpcUrls:{default:{http:[RPC]}}};
 const reader=createClient({chain});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

@@ -7,6 +7,7 @@ import {
   CONTRACT_CONFIGURED,
   GENLAYER_EXPLORER_URL,
 } from "../../lib/config";
+import { Withdrawal } from "./Actions";
 import { Ident } from "./bits";
 import { Logo } from "./Logo";
 import { NetworkPill } from "./NetworkPill";
@@ -66,6 +67,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+
+      {/* The pull ledger's only exit, wherever the wallet is. It renders
+          nothing at all unless this wallet has a balance waiting. */}
+      <Withdrawal />
 
       {children}
 

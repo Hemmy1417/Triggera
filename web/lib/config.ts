@@ -48,6 +48,30 @@ export function formatGen(atto: string | bigint, decimals = 3): string {
   return `${negative ? "-" : ""}${whole.toString()}${decimals ? "." + fracStr : ""}`;
 }
 
+/**
+ * The EXACT figure, for an amount that must match.
+ *
+ * formatGen's three decimals are for reading a balance. An activation premium
+ * and an appeal bond are compared integer-for-integer by the contract — send
+ * one atto too few and the write is refused — so anywhere the face states the
+ * amount a user is about to send, it states all of it. Trailing zeros are
+ * trimmed, so a round number still reads as one: 5·10^16 atto is "0.05", not
+ * "0.050000000000000000".
+ */
+export function formatGenExact(atto: string | bigint): string {
+  let v: bigint;
+  try {
+    v = typeof atto === "bigint" ? atto : BigInt(String(atto || "0"));
+  } catch {
+    return "0";
+  }
+  const negative = v < 0n;
+  if (negative) v = -v;
+  const whole = (v / ATTO).toString();
+  const frac = (v % ATTO).toString().padStart(18, "0").replace(/0+$/, "");
+  return `${negative ? "-" : ""}${whole}${frac ? `.${frac}` : ""}`;
+}
+
 /** basis points → "85%" or "8.5%" — trailing zeros trimmed. */
 export function formatBps(bps: number): string {
   const pct = bps / 100;
@@ -107,6 +131,25 @@ export function formatRelative(epoch: number, now: number): string {
   }
   const span = `${n} ${unit}${n === 1 ? "" : "s"}`;
   return diff > 0 ? `in ${span}` : `${span} ago`;
+}
+
+/**
+ * A `datetime-local` value is wall-clock in the reader's own zone; the moment
+ * it becomes is compared against the contract's consensus clock, which is
+ * UTC. The pair lives here rather than in one page because both the policy
+ * builder and the claim form ask for a window, and two spellings of this
+ * conversion would eventually disagree about what a user typed.
+ */
+export function epochFromLocal(v: string): number | null {
+  if (!v) return null;
+  const ms = new Date(v).getTime();
+  return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+}
+
+export function localFromEpoch(epoch: number): string {
+  const d = new Date(epoch * 1000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 /** "5 Sep 2026, 13:52 UTC (in 12 minutes)": the stamp with its distance. */

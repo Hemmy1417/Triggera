@@ -28,16 +28,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CONTRACT_ADDRESS,
   CONTRACT_CONFIGURED,
+  epochFromLocal,
   formatGen,
   formatSpan,
   formatStamp,
+  localFromEpoch,
 } from "../../lib/config";
 import { getConfig, getPoliciesFor, invalidateReads, type Config } from "../../lib/read";
 import { contractRefusal, inFlight, writeAndConfirm, type TxProgress } from "../../lib/tx";
 import { registrableDomain, validOrigin } from "../../lib/urls";
 import { useNow } from "../../lib/useNow";
 import { useWallet } from "../../lib/wallet";
-import { Ident, Technical } from "../components/bits";
+import { Field, Ident, Technical } from "../components/bits";
 import { TxFlow } from "../components/TxFlow";
 
 /* ── the vocabulary ─────────────────────────────────────────────────────────
@@ -129,21 +131,6 @@ function degreesToMicro(s: string): number | null {
   return Math.round(n * 1e6);
 }
 
-/** A datetime-local value is wall-clock in the reader's own zone; the moment
- *  it becomes is shown back in UTC, because UTC is what the contract's
- *  consensus clock compares against. */
-function epochFromLocal(v: string): number | null {
-  if (!v) return null;
-  const ms = new Date(v).getTime();
-  return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
-}
-
-function localFromEpoch(epoch: number): string {
-  const d = new Date(epoch * 1000);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
 /** An epoch reads as a date a person recognises, with the clock time as its
  *  small qualifier. The number itself belongs in the fold. */
 function When({ epoch }: { epoch: number }) {
@@ -181,35 +168,6 @@ const ARG_NAMES = [
 ];
 
 type BasisRow = { origin: string; kind: string; cls: "INDEPENDENT" | "PARTY" };
-
-/** A labelled control. The line beneath it is a hint or a problem, never both
- *  and never a paragraph: they occupy the same line so nothing jumps as you
- *  type, and a problem simply reads in the brighter colour. */
-function Field({
-  label,
-  hint,
-  problem,
-  children,
-}: {
-  label: string;
-  hint?: React.ReactNode;
-  problem?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="field">
-      <span className="label">{label}</span>
-      {children}
-      {problem ? (
-        <span className="hint" style={{ color: "var(--bone)" }}>
-          {problem}
-        </span>
-      ) : hint ? (
-        <span className="hint">{hint}</span>
-      ) : null}
-    </label>
-  );
-}
 
 export default function Compose() {
   const { address, client, chainOk } = useWallet();
