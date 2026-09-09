@@ -13,13 +13,14 @@ other way round.
 
 | Version | Address | Status | Network |
 |---|---|---|---|
-| v0.1.0 | `0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` | **current** | GenLayer Studio Next, chain 61997 |
+| v0.1.1 | `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` | **current** | GenLayer Studio Next, chain 61997 |
+| v0.1.0 | `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` | superseded | GenLayer Studio Next, chain 61997 |
 
 | | |
 |---|---|
 | **Chain id** | `61997` |
 | **RPC** | `https://studio-next.genlayer.com/api` |
-| **Explorer** | [`/address/0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`](https://explorer-studio-dev.genlayer.com/address/0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42) |
+| **Explorer** | [`/address/0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309`](https://explorer-studio-dev.genlayer.com/address/0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309) |
 | **Runner** | `py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng` |
 | **Source** | `contracts/triggera.py`, class `Triggera` |
 | **App** | https://triggera.vercel.app (root directory `web`) |
@@ -46,15 +47,15 @@ working tree.
 
 | | |
 |---|---|
-| **Method** | `gen_getContractCode` against `0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` on the RPC above, decoded and compared with the file in this checkout |
-| **Size** | 100,199 bytes |
-| **sha256** | `18eaa323a0d3d156405e8584872a19aa5dc9476e55c9fd4f7a79e2bb9b371786` |
-| **Result** | byte-for-byte identical |
+| **Method** | `gen_getContractCode` against `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` on the RPC above, decoded and compared with the file in this checkout |
+| **Size** | 98,298 chars |
+| **sha256** | `be44f12284bea28c393abd879d65bd1dd981eace9dccbcde06deb045cbdaae5a` |
+| **Deploy tx** | `0x6a6d8bcc4ba1a0a12f794c53f6f95660bcf0913ac07910a9b073545f4e11607a` (FINALIZED, MAJORITY_AGREE, leader SUCCESS) |
 
 Reproduce it:
 
 ```bash
-node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42
+node web/scripts/deploy.mjs verify 0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309
 ```
 
 `deploy.mjs` fetches the deployed source, prints the digest and length of both
@@ -162,7 +163,7 @@ is enough to run against it.
 
 | Variable | Value in `.env.example` | Read by | If unset |
 |---|---|---|---|
-| `NEXT_PUBLIC_CONTRACT_ADDRESS` | `0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` | `web/lib/config.ts`, `web/app/api/rpc/route.ts` | `CONTRACT_CONFIGURED` is false: reads in `web/lib/read.ts` throw `no contract configured`, and the shell and `/create` block rather than read a blank address |
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` | `web/lib/config.ts`, `web/app/api/rpc/route.ts` | `CONTRACT_CONFIGURED` is false: reads in `web/lib/read.ts` throw `no contract configured`, and the shell and `/create` block rather than read a blank address |
 | `NEXT_PUBLIC_GENLAYER_RPC_URL` | `https://studio-next.genlayer.com/api` | `web/lib/config.ts` | defaults to the same URL |
 | `NEXT_PUBLIC_GENLAYER_CHAIN_ID` | `61997` | `web/lib/config.ts` | defaults to `61997` |
 | `NEXT_PUBLIC_GENLAYER_EXPLORER_URL` | `https://explorer-studio-dev.genlayer.com` | `web/lib/config.ts` | defaults to the same URL; trailing slashes are trimmed |
@@ -181,7 +182,7 @@ proxy's allowlist refuses them.
 
 | Claim | Command | What it asserts |
 |---|---|---|
-| the deployed bytes are this source | `node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` | `gen_getContractCode` equals `contracts/triggera.py` exactly; prints both digests and the first differing line |
+| the deployed bytes are this source | `node web/scripts/deploy.mjs verify 0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` | `gen_getContractCode` equals `contracts/triggera.py` exactly; prints both digests and the first differing line |
 | every surface names one address | `cd web && npm run verify` | this ledger's **current** row, `web/.env.example`, `.github/workflows/tests.yml` and `README.md` agree, and no superseded address is a default in the env example or CI |
 | custody reconciles on chain | `cd web && node scripts/reconcile.mjs` | `escrow_atto` equals what live policies hold plus every unpulled ledger balance, and the contract's GEN balance is at least that; exits non-zero otherwise (needs `web/.data/keys.json`) |
 | the live policy reads as recorded | `cd web && node scripts/state.mjs` | prints `get_policy`, the evidence basis and `get_stats` for `trg-000001` |
@@ -195,7 +196,17 @@ the sweep; running it from a clone elsewhere needs the same substitution.
 
 ---
 
-## Live acts against this deployment
+## Live acts against the PREDECESSOR deployment
+
+> **Everything in this section and the next ran against `0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`, the v0.1.0
+> deployment, not against the current one.** That contract was superseded when
+> the excerpt-corroboration guard was added, and its policies do not exist at
+> the new address. The acts are recorded here because they happened and the
+> record should not be quietly reattributed to a contract that never ran them.
+> The current deployment differs from the one below by that guard alone; the
+> direct suite and the mutation sweep cover both, and a fresh live arc against
+> `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` is recorded separately once run.
+
 
 Each arc script asserts through a `check(cond, what)` helper and exits on the
 count of failures, so a transcript claims exactly what a check asserted. What
@@ -266,9 +277,10 @@ policy regenerates its transcript.
 
 ---
 
-## The payout arc, on chain
+## The payout arc, on chain (predecessor deployment)
 
-Ran 9th September 2026 against `trg-000001` on this deployment, in eight
+Ran 9th September 2026 against `trg-000001` on the PREDECESSOR deployment
+`0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`, in eight
 transactions. Each is viewable at
 `https://explorer-studio-dev.genlayer.com/tx/<hash>`.
 

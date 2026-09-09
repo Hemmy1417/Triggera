@@ -37,7 +37,7 @@ Two properties are load-bearing and are stated plainly everywhere they matter:
 | | |
 |---|---|
 | Contract | `contracts/triggera.py`, class `Triggera` — one file |
-| Address | `0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` |
+| Address | `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` |
 | Network | GenLayer Studio Next, chain 61997 |
 | RPC | `https://studio-next.genlayer.com/api` |
 | Explorer | `https://explorer-studio-dev.genlayer.com` (`/address/<a>`, `/tx/<h>`) |

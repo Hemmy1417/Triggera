@@ -60,4 +60,4 @@ jobs:
         env:
           # The deployment of record. docs/DEPLOYMENT.md and web/.env.example
           # name the same address (S37); `npm run verify` checks all three.
-          NEXT_PUBLIC_CONTRACT_ADDRESS: "0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42"
+          NEXT_PUBLIC_CONTRACT_ADDRESS: "0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309"

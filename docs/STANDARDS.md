@@ -52,10 +52,10 @@ Two facts recur below and are stated once here:
 | `cd web && npm test` | 59 vitest tests over the read/write/tx layer | 59 tests — the recorded run |
 | `cd web && npm run typecheck` / `npx eslint .` | types and lint | clean — the recorded run |
 | `cd web && npm run verify` | every surface naming the contract names the same address | exits 0 here, all four surfaces `0xF83CB718…8c42` — re-run while writing this file |
-| `node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` | the deployed bytes are this checkout's bytes | 100,199 bytes, sha256 `18eaa323…b371786`, identical to `contracts/triggera.py` |
+| `node web/scripts/deploy.mjs verify 0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` | the deployed bytes are this checkout's bytes | 100,199 bytes, sha256 `18eaa323…b371786`, identical to `contracts/triggera.py` |
 | `.github/workflows/tests.yml` | both jobs, every step | green at `2650cfd`, confirmed job by job through the public GitHub Actions API rather than read off a badge |
 
-The deployment of record is `0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` on
+The deployment of record is `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` on
 GenLayer Studio Next (chain 61997), runner
 `py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng`.
 
@@ -432,7 +432,7 @@ It prints every surface either way and exits non-zero on the first disagreement.
 **Proved by:** `cd web && npm run verify`. In this checkout it exits 0, with all
 four surfaces naming `0xf83cb718eb3eb09bcc8b24cec902687116d68c42`. The bytes
 behind that address are checked separately by
-`node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`,
+`node web/scripts/deploy.mjs verify 0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309`,
 which reports 100,199 bytes with sha256 `18eaa323…b371786`, identical to
 `contracts/triggera.py`.
 
@@ -519,7 +519,7 @@ change.
 ### The payout arc has run, and two of its checks proved less than they claimed
 
 `web/scripts/arc-payout.mjs` ran on 9th September 2026 against
-`0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`, in eight transactions listed in
+`0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` — the PREDECESSOR deployment, in eight transactions listed in
 `docs/DEPLOYMENT.md`. Payout, appeal, bond forfeiture and settlement have all
 happened on chain.
 

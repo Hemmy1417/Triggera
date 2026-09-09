@@ -18,11 +18,11 @@ window and an appeal window, through a pull-payment ledger.
 
 | | |
 |---|---|
-| **Contract** | `0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` |
+| **Contract** | `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` |
 | **Network** | GenLayer Studio Next, chain 61997 |
 | **RPC** | `https://studio-next.genlayer.com/api` |
 | **Runner** | `py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng` |
-| **Explorer** | [`/address/0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42`](https://explorer-studio-dev.genlayer.com/address/0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42) |
+| **Explorer** | [`/address/0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309`](https://explorer-studio-dev.genlayer.com/address/0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309) |
 | **Source** | `contracts/triggera.py`, class `Triggera` |
 | **App** | [triggera.vercel.app](https://triggera.vercel.app) |
 
@@ -35,7 +35,7 @@ checks the file out as LF, so a clone holds the same source at sha256
 [DEPLOYMENT.md](docs/DEPLOYMENT.md) sets out why there are two:
 
 ```bash
-node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42
+node web/scripts/deploy.mjs verify 0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309
 ```
 
 `get_config` reports `"version": "0.1.0"`. Line 1 of the contract reads
@@ -134,7 +134,7 @@ Three properties, stated plainly because they are the point:
 | Web suite | 59 tests pass | `cd web && npm test` |
 | Types | clean | `cd web && npm run typecheck` |
 | Web lint | clean | `cd web && npx eslint .` |
-| Deployed bytes | sha256 `18eaa323…b371786` (100,199 bytes, CRLF) — the same source a clone checks out as LF, sha256 `b7a67dba…9b3c4cc0`. The command normalizes line endings and prints both, so it holds from any checkout; [DEPLOYMENT.md](docs/DEPLOYMENT.md) carries the reasoning | `node web/scripts/deploy.mjs verify 0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` |
+| Deployed bytes | sha256 `be44f122…cbdaae5a` (98,298 chars, LF) — **one** digest: the deployed bytes, the git blob and a fresh clone all hash the same. The predecessor needed two, because it was deployed from a CRLF working copy; [DEPLOYMENT.md](docs/DEPLOYMENT.md) carries that history | `node web/scripts/deploy.mjs verify 0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` |
 | Surfaces agree | checks that all four surfaces naming the contract name one address | `cd web && npm run verify` |
 | CI | both jobs green at `2650cfd` | `.github/workflows/tests.yml` |
 

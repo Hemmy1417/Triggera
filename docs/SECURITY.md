@@ -29,7 +29,7 @@ it. Test names are from `tests/direct` and run under
 | | |
 |---|---|
 | Contract under review | `contracts/triggera.py`, class `Triggera` |
-| Deployment of record | `0xF83CB718eb3Eb09bcc8b24cEC902687116D68c42` on GenLayer Studio Next, chain 61997 |
+| Deployment of record | `0xe3d35e24E2aa9A58f451Ce0468cFA3cB3B1E1309` on GenLayer Studio Next, chain 61997 |
 | Byte-verified | `gen_getContractCode` at that address returns 100,199 bytes, sha256 `18eaa323a0d3d156405e8584872a19aa5dc9476e55c9fd4f7a79e2bb9b371786`, identical to `contracts/triggera.py` in this checkout |
 | Runner | `py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng` |
 | Web layer | `web/`, Next.js App Router; the only server-side code is the read proxy at `web/app/api/rpc/route.ts` |
