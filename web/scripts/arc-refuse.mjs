@@ -187,9 +187,9 @@ async function send(role, fn, args, value = 0n, maxTicks = 220) {
       try { text = printable(Buffer.from(payloadOf(l), 'base64').toString('utf-8')); } catch { /* none */ }
       say('   ' + fn + ': FINALIZED ' + t.result_name + ' leader=' + l?.execution_result
         + (text ? ' -> ' + text.slice(0, 90) : ''));
-      return { ok: l?.execution_result === 'SUCCESS', text, hash };
+      return { ok: l?.execution_result === 'SUCCESS', text, hash, status: 'FINALIZED' };
     }
-    if (st === 'CANCELED' || st === 'UNDETERMINED') { say('   ' + fn + ': ' + st); return { ok: false, text: '', hash }; }
+    if (st === 'CANCELED' || st === 'UNDETERMINED') { say('   ' + fn + ': ' + st); return { ok: false, text: '', hash, status: st }; }
     if (i % 10 === 9) say('   ' + fn + ': ... ' + (st ?? 'pending'));
   }
   throw new Error(fn + ' never finalized');
@@ -295,9 +295,31 @@ say('');
 say('ACT B - the panel reads three live pages, then the record is promoted');
 if (pol.status === 'INVESTIGATING') {
   say('   a full LLM round with three live fetches, allow ~20 minutes');
-  const inv = await send('THIRD', 'investigate', [PID], 0n, 320);
-  check(inv.ok, 'investigate landed SUCCESS (permissionless)');
-  if (!inv.ok) hardStop('investigate reverted: ' + inv.text.slice(0, 400));
+  /* A NONDET ROUND THAT DOES NOT REACH CONSENSUS IS RETRYABLE, AND ONLY THAT.
+     GenLayer reports validator disagreement as a transaction-level
+     UNDETERMINED, which is not the contract's UNDETERMINED outcome: nothing is
+     written, no decision exists, no evidence version is consumed, and the
+     policy is still INVESTIGATING. Re-running is therefore safe and correct.
+     The state is re-read before each attempt rather than assumed, so a round
+     that actually landed is never run twice. */
+  let inv = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const already = await view('get_decision', [PID, V]);
+    if (already) { say('   the round for v' + V + ' is already on the record'); break; }
+    inv = await send('THIRD', 'investigate', [PID], 0n, 320);
+    if (inv.ok) break;
+    if (inv.status !== 'UNDETERMINED' && inv.status !== 'CANCELED') {
+      hardStop('investigate reverted: ' + (inv.text || '(no reason returned)').slice(0, 400));
+    }
+    say('   the panel did not reach consensus (' + inv.status + '); nothing was written, so this is retryable');
+    if (attempt < 3) await sleep(20_000);
+  }
+  const landed = await view('get_decision', [PID, V]);
+  check(!!landed, 'the panel round is on the record for v' + V);
+  if (!landed) {
+    hardStop('three rounds in a row failed to reach validator consensus. Nothing was written and '
+      + 'no evidence version was consumed, so this can be re-run later; it is the network, not the record.');
+  }
   pol = await view('get_policy', [PID]);
 } else {
   say('   skipped: status is ' + pol.status + ', the round for v' + V + ' is already recorded');
